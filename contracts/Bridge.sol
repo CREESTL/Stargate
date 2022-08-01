@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IBridge.sol";
 import "./interfaces/IBridgeTokenStandardERC20.sol";
 
-contract Bridge is IBridge, AccessControl{
+contract Bridge is IBridge, AccessControl {
 
     using SafeERC20 for IERC20;
 
@@ -27,8 +27,8 @@ contract Bridge is IBridge, AccessControl{
         _;
     }
 
-    modifier addressIsNull(address _token) {
-        require(_token != address(0), "The address is null");
+    modifier addressIsNull(address _address) {
+        require(_address != address(0), "The address is null");
         _;
     }
 
@@ -36,6 +36,7 @@ contract Bridge is IBridge, AccessControl{
         require(allowedTokens[_token], "invalidToken");
         _;
     }
+
     modifier wrappedTokenIsAllowed(address _token) {
         require(allowedWrappedTokens[_token], "invalidToken");
         _;
@@ -55,9 +56,14 @@ contract Bridge is IBridge, AccessControl{
         string memory _to,
         uint256 _amount,
         string memory direction
-    ) external override wrappedTokenIsAllowed(_token) addressIsNull(_token) {
+    )
+    external
+    override
+    wrappedTokenIsAllowed(_token)
+    addressIsNull(_token)
+    {
         address sender = _msgSender();
-        IBridgeTokenStandardERC20(_token).transferFrom(sender, address(this), _amount);
+        IBridgeTokenStandardERC20(_token).burn(sender, _amount);
         emit RequestBridgingWrappedToken(_token, sender, _to, _amount, direction);
     }
 
@@ -66,7 +72,12 @@ contract Bridge is IBridge, AccessControl{
         string memory _to,
         uint256 _amount,
         string memory direction
-    ) external override tokenIsAllowed(_token) addressIsNull(_token) {
+    )
+    external
+    override
+    tokenIsAllowed(_token)
+    addressIsNull(_token)
+    {
         address sender = _msgSender();
         IERC20(_token).safeTransferFrom(sender, address(this), _amount);
         emit RequestBridgingToken(_token, sender, _to, _amount, direction);
@@ -76,22 +87,39 @@ contract Bridge is IBridge, AccessControl{
         address _token,
         address _to,
         uint256 _amount
-    ) external override onlyMessengerBot wrappedTokenIsAllowed(_token) addressIsNull(_token) {
+    )
+    external
+    override
+    onlyMessengerBot
+    wrappedTokenIsAllowed(_token)
+    addressIsNull(_token)
+    {
         IBridgeTokenStandardERC20(_token).mint(_to, _amount);
-        emit BridgingWrappedPerformed(_token, _to, _amount);
+        emit BridgingWrappedTokenPerformed(_token, _to, _amount);
     }
 
     function performBridgingToken(
         address _token,
         address _to,
         uint256 _amount
-    ) external override onlyMessengerBot tokenIsAllowed(_token) addressIsNull(_token) {
+    )
+    external
+    override
+    onlyMessengerBot
+    tokenIsAllowed(_token)
+    addressIsNull(_token)
+    {
         IERC20(_token).safeTransfer(_to, _amount);
         emit BridgingTokenPerformed(_token, _to, _amount);
     }
 
-    function setBridgedStandardERC20(address _bridgeStandardERC20) external onlyAdmin {
-        require(_bridgeStandardERC20 != address(0), "Address is null");
+    function setBridgedStandardERC20(
+        address _bridgeStandardERC20
+    )
+    external
+    onlyAdmin
+    addressIsNull(_bridgeStandardERC20)
+    {
         bridgeStandardERC20 = IBridgeTokenStandardERC20(_bridgeStandardERC20);
     }
 
@@ -99,11 +127,23 @@ contract Bridge is IBridge, AccessControl{
         grantRole(DEFAULT_ADMIN_ROLE, _newAdmin);
     }
 
-    function setAllowedToken(address _token, bool _status) external onlyAdmin {
+    function setAllowedToken(
+        address _token,
+        bool _status
+    ) external
+    onlyAdmin
+    addressIsNull(_token) {
         allowedTokens[_token] = _status;
     }
 
-    function setAllowedWrappedToken(address _token, bool _status) external onlyAdmin {
+    function setAllowedWrappedToken(
+        address _token,
+        bool _status
+    )
+    external
+    onlyAdmin
+    addressIsNull(_token)
+    {
         allowedWrappedTokens[_token] = _status;
     }
 

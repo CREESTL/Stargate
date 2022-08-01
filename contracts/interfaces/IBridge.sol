@@ -43,7 +43,7 @@ interface IBridge {
         string direction
     );
 
-    event BridgingWrappedPerformed(
+    event BridgingWrappedTokenPerformed(
         address _token,
         address _to,
         uint _amount
@@ -52,6 +52,7 @@ interface IBridge {
     event BridgingTokenPerformed(
         address _token,
         address _to,
-        uint _amount);
+        uint _amount
+    );
 
 }
