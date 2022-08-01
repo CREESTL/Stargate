@@ -71,4 +71,8 @@ module.exports = {
     }
   },
   skipFiles: ["node_modules"],
+    gasReporter: {
+        enabled: true,
+        url: "http://localhost:8545"
+    },
 };

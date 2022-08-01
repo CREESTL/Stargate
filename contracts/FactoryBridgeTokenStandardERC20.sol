@@ -12,8 +12,8 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
 
     address public bridge;
 
-    //mapping(address => bool) private allowedTokens;
-    address[] public allowedTokens;
+//    mapping(address => bool) private allowedTokens;
+    address[] private allowedTokens;
 
     IBridgeTokenStandardERC20 public bridgeTokenStandard;
 
@@ -49,34 +49,44 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
             _symbol,
             _decimals
         );
-        // allowedTokens[token] = true;
+//        allowedTokens[token] = true;
+//        emit CreateNewToken(token);
         allowedTokens.push(token);
         return token;
     }
+
     function setBridge(address _bridge) external onlyAdmin {
         require(_bridge != address(0), "Address is null");
         bridge = _bridge;
     }
 
     function getAllowedToken(address _token) public view returns(bool) {
-        return allowedTokens[_token];
-    }
-
-    function removeFromAllowedToken(address _token) public {
-        require(allowedTokens[_token], "Token is not allowed");
-//        allowedTokens[_token] = false;
-        for (uint i; i < allowedTokens.length(); i++){
+//        return allowedTokens[_token];
+        for (uint i; i < allowedTokens.length; i++){
             if (allowedTokens[i] == _token) {
-                delete allowedTokens[i];
+                return true;
             }
         }
+        return false;
+    }
+
+    function removeFromAllowedToken(address _token) public onlyAdmin {
+//        require(allowedTokens[_token], "Token is not allowed");
+//        allowedTokens[_token] = false;
+        for (uint i; i < allowedTokens.length; i++){
+            if (allowedTokens[i] == _token) {
+                allowedTokens[i] = allowedTokens[allowedTokens.length - 1];
+                allowedTokens.pop();
+                break;
+            }
+        }
+
     }
 
     function setBridgeTokenStandardERC20(address _bridgeTokenStandardERC20) public onlyAdmin {
         require(_bridgeTokenStandardERC20 != address(0), "Address is null");
         bridgeTokenStandard = IBridgeTokenStandardERC20(_bridgeTokenStandardERC20);
     }
-
 
     function getAllowedTokens() public view returns (address[] memory) {
         return allowedTokens;

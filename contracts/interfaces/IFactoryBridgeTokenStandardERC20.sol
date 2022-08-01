@@ -9,4 +9,6 @@ interface IFactoryBridgeTokenStandardERC20 {
 
     function getAllowedToken(address) external view returns (bool);
     function setBridge(address _bridge) external;
+
+    event CreateNewToken(address indexed _token);
 }
