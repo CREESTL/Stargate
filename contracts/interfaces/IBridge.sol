@@ -6,26 +6,26 @@ interface IBridge {
         string memory _to,
         uint256 _amount,
         string memory direction
-    ) external;
+    ) external returns(bool);
 
     function requestBridgingToken(
         address _token,
         string memory _to,
         uint256 _amount,
         string memory direction
-    ) external;
+    ) external returns(bool);
 
     function performBridgingWrappedToken(
         address _token,
         address _to,
         uint256 _amount
-    ) external;
+    ) external returns(bool);
 
     function performBridgingToken(
         address _token,
         address _to,
         uint256 _amount
-    ) external;
+    ) external returns(bool);
 
     event RequestBridgingToken(
         address _token,

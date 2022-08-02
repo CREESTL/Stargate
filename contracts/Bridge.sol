@@ -17,6 +17,11 @@ contract Bridge is IBridge, AccessControl {
     mapping(address => bool) public allowedTokens;
     mapping(address => bool) public allowedWrappedTokens;
 
+    uint private constant MAX_BP = 1000;
+    uint public feeRate;
+
+    address public feeWallet;
+
     modifier onlyMessengerBot {
         require(hasRole(BOT_MESSENGER_ROLE, _msgSender()), "onlyMessengerBot");
         _;
@@ -42,9 +47,17 @@ contract Bridge is IBridge, AccessControl {
         _;
     }
 
-    constructor(address _bridgeStandardERC20, address _botMessenger) {
+    constructor(
+        address _bridgeStandardERC20,
+        address _botMessenger,
+        uint _feeRate,
+        address _feeWallet
+    ) {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(BOT_MESSENGER_ROLE, _botMessenger);
+
+        feeRate = _feeRate;
+        feeWallet = _feeWallet;
 
         if (_bridgeStandardERC20 != address(0)) {
             bridgeStandardERC20 = IBridgeTokenStandardERC20(_bridgeStandardERC20);
@@ -61,10 +74,15 @@ contract Bridge is IBridge, AccessControl {
     override
     wrappedTokenIsAllowed(_token)
     addressIsNull(_token)
+    returns(bool)
     {
         address sender = _msgSender();
-        IBridgeTokenStandardERC20(_token).burn(sender, _amount);
-        emit RequestBridgingWrappedToken(_token, sender, _to, _amount, direction);
+        uint amountWithoutFee = _calcFee(_amount);
+        IBridgeTokenStandardERC20(_token).transferFrom(sender, address(this), _amount);
+        IBridgeTokenStandardERC20(_token).burn(address(this), amountWithoutFee);
+        IBridgeTokenStandardERC20(_token).transfer(feeWallet, _amount - amountWithoutFee);
+        emit RequestBridgingWrappedToken(_token, sender, _to, amountWithoutFee, direction);
+        return true;
     }
 
     function requestBridgingToken(
@@ -77,10 +95,14 @@ contract Bridge is IBridge, AccessControl {
     override
     tokenIsAllowed(_token)
     addressIsNull(_token)
+    returns(bool)
     {
         address sender = _msgSender();
+        uint amountWithoutFee = _calcFee(_amount);
         IERC20(_token).safeTransferFrom(sender, address(this), _amount);
-        emit RequestBridgingToken(_token, sender, _to, _amount, direction);
+        IERC20(_token).safeTransfer(feeWallet, _amount - amountWithoutFee);
+        emit RequestBridgingToken(_token, sender, _to, amountWithoutFee, direction);
+        return true;
     }
 
     function performBridgingWrappedToken(
@@ -93,9 +115,11 @@ contract Bridge is IBridge, AccessControl {
     onlyMessengerBot
     wrappedTokenIsAllowed(_token)
     addressIsNull(_token)
+    returns(bool)
     {
         IBridgeTokenStandardERC20(_token).mint(_to, _amount);
         emit BridgingWrappedTokenPerformed(_token, _to, _amount);
+        return true;
     }
 
     function performBridgingToken(
@@ -108,9 +132,11 @@ contract Bridge is IBridge, AccessControl {
     onlyMessengerBot
     tokenIsAllowed(_token)
     addressIsNull(_token)
+    returns(bool)
     {
         IERC20(_token).safeTransfer(_to, _amount);
         emit BridgingTokenPerformed(_token, _to, _amount);
+        return true;
     }
 
     function setBridgedStandardERC20(
@@ -130,9 +156,11 @@ contract Bridge is IBridge, AccessControl {
     function setAllowedToken(
         address _token,
         bool _status
-    ) external
+    )
+    external
     onlyAdmin
-    addressIsNull(_token) {
+    addressIsNull(_token)
+    {
         allowedTokens[_token] = _status;
     }
 
@@ -147,4 +175,16 @@ contract Bridge is IBridge, AccessControl {
         allowedWrappedTokens[_token] = _status;
     }
 
+    function setFeeRate(uint _feeRate) external onlyAdmin {
+        require(_feeRate > 0 && _feeRate <= MAX_BP, "Out of range");
+        feeRate = _feeRate;
+    }
+
+    function setFeeWallet(address _feeWallet) external onlyAdmin {
+        feeWallet = _feeWallet;
+    }
+
+    function _calcFee(uint _amount) private view returns(uint) {
+        return _amount * feeRate / MAX_BP;
+    }
 }
