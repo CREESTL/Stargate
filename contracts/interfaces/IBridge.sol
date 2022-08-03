@@ -1,57 +1,57 @@
 pragma solidity ^0.8.0;
 
 interface IBridge {
-    function requestBridgingWrappedToken(
+    function burn(
         address _token,
         string memory _to,
         uint256 _amount,
-        string memory direction
+        string memory _direction
     ) external returns(bool);
 
-    function requestBridgingToken(
+    function lock(
         address _token,
         string memory _to,
         uint256 _amount,
-        string memory direction
-    ) external returns(bool);
+        string memory _direction
+    ) external payable returns(bool);
 
-    function performBridgingWrappedToken(
+    function mintWithPermit(
         address _token,
         address _to,
         uint256 _amount
     ) external returns(bool);
 
-    function performBridgingToken(
+    function unlockWithPermit(
         address _token,
         address _to,
         uint256 _amount
     ) external returns(bool);
 
     event RequestBridgingToken(
-        address _token,
-        address sender,
+        address indexed _token,
+        address indexed _sender,
         string _to,
         uint _amount,
-        string direction
+        string _direction
     );
 
     event RequestBridgingWrappedToken(
-        address _token,
-        address sender,
+        address indexed _token,
+        address indexed _sender,
         string _to,
         uint _amount,
-        string direction
+        string _direction
     );
 
     event BridgingWrappedTokenPerformed(
-        address _token,
-        address _to,
+        address indexed _token,
+        address indexed _to,
         uint _amount
     );
 
     event BridgingTokenPerformed(
-        address _token,
-        address _to,
+        address indexed _token,
+        address indexed _to,
         uint _amount
     );
 

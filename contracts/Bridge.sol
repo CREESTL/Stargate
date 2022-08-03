@@ -64,48 +64,56 @@ contract Bridge is IBridge, AccessControl {
         }
     }
 
-    function requestBridgingWrappedToken(
+    function burn(
         address _token,
         string memory _to,
         uint256 _amount,
-        string memory direction
+        string memory _direction
     )
     external
     override
-    wrappedTokenIsAllowed(_token)
     addressIsNull(_token)
+    wrappedTokenIsAllowed(_token)
     returns(bool)
     {
         address sender = _msgSender();
-        uint amountWithoutFee = _calcFee(_amount);
+        uint feeAmount = _calcFee(_amount);
         IBridgeTokenStandardERC20(_token).transferFrom(sender, address(this), _amount);
-        IBridgeTokenStandardERC20(_token).burn(address(this), amountWithoutFee);
-        IBridgeTokenStandardERC20(_token).transfer(feeWallet, _amount - amountWithoutFee);
-        emit RequestBridgingWrappedToken(_token, sender, _to, amountWithoutFee, direction);
+        IBridgeTokenStandardERC20(_token).burn(address(this), feeAmount);
+        IBridgeTokenStandardERC20(_token).transfer(feeWallet, _amount - feeAmount);
+        emit RequestBridgingWrappedToken(_token, sender, _to, _amount - feeAmount, _direction);
         return true;
     }
 
-    function requestBridgingToken(
+    function lock(
         address _token,
         string memory _to,
         uint256 _amount,
-        string memory direction
+        string memory _direction
     )
     external
+    payable
     override
     tokenIsAllowed(_token)
-    addressIsNull(_token)
     returns(bool)
     {
         address sender = _msgSender();
-        uint amountWithoutFee = _calcFee(_amount);
-        IERC20(_token).safeTransferFrom(sender, address(this), _amount);
-        IERC20(_token).safeTransfer(feeWallet, _amount - amountWithoutFee);
-        emit RequestBridgingToken(_token, sender, _to, amountWithoutFee, direction);
-        return true;
+        if (_token != address(0)){
+            uint feeAmount = _calcFee(_amount);
+            IERC20(_token).safeTransferFrom(sender, address(this), _amount);
+            IERC20(_token).safeTransfer(feeWallet, _amount - feeAmount);
+            emit RequestBridgingToken(_token, sender, _to, _amount - feeAmount, _direction);
+            return true;
+        } else {
+            require(msg.value != 0, "Invalid value");
+            uint feeAmount = _calcFee(msg.value);
+            (bool success, bytes memory data) = feeWallet.call{ value: feeAmount }("");
+            emit RequestBridgingToken(_token, sender, _to, msg.value - feeAmount, _direction);
+            return true;
+        }
     }
 
-    function performBridgingWrappedToken(
+    function mintWithPermit(
         address _token,
         address _to,
         uint256 _amount
@@ -113,8 +121,8 @@ contract Bridge is IBridge, AccessControl {
     external
     override
     onlyMessengerBot
-    wrappedTokenIsAllowed(_token)
     addressIsNull(_token)
+    wrappedTokenIsAllowed(_token)
     returns(bool)
     {
         IBridgeTokenStandardERC20(_token).mint(_to, _amount);
@@ -122,7 +130,7 @@ contract Bridge is IBridge, AccessControl {
         return true;
     }
 
-    function performBridgingToken(
+    function unlockWithPermit(
         address _token,
         address _to,
         uint256 _amount
@@ -130,8 +138,8 @@ contract Bridge is IBridge, AccessControl {
     external
     override
     onlyMessengerBot
-    tokenIsAllowed(_token)
     addressIsNull(_token)
+    tokenIsAllowed(_token)
     returns(bool)
     {
         IERC20(_token).safeTransfer(_to, _amount);
@@ -159,7 +167,7 @@ contract Bridge is IBridge, AccessControl {
     )
     external
     onlyAdmin
-    addressIsNull(_token)
+//    addressIsNull(_token)
     {
         allowedTokens[_token] = _status;
     }
@@ -186,5 +194,13 @@ contract Bridge is IBridge, AccessControl {
 
     function _calcFee(uint _amount) private view returns(uint) {
         return _amount * feeRate / MAX_BP;
+    }
+
+    function evacuateToken(address _token, uint _amount) external onlyAdmin {
+        if (_token != address(0)) {
+            IERC20(_token).transfer(_msgSender(), _amount);
+        } else {
+            (bool success, ) = _msgSender().call{value: _amount}("");
+        }
     }
 }
