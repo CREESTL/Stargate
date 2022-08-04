@@ -9,6 +9,7 @@ import "./interfaces/IBridgeTokenStandardERC20.sol";
 contract Bridge is IBridge, AccessControl {
 
     using SafeERC20 for IERC20;
+    using SafeERC20 for IBridgeTokenStandardERC20;
 
     bytes32 public constant BOT_MESSENGER_ROLE = keccak256("BOT_MESSENGER_ROLE");
 
@@ -99,9 +100,9 @@ contract Bridge is IBridge, AccessControl {
     {
         address sender = _msgSender();
         uint feeAmount = _calcFee(_amount);
-        IBridgeTokenStandardERC20(_token).transferFrom(sender, address(this), _amount);
+        IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount);
         IBridgeTokenStandardERC20(_token).burn(address(this), feeAmount);
-        IBridgeTokenStandardERC20(_token).transfer(feeWallet, _amount - feeAmount);
+        IBridgeTokenStandardERC20(_token).safeTransfer(feeWallet, _amount - feeAmount);
         emit RequestBridgingWrappedToken(_token, sender, _to, _amount - feeAmount, _direction);
         return true;
     }
@@ -218,9 +219,9 @@ contract Bridge is IBridge, AccessControl {
         return _amount * feeRate / MAX_BP;
     }
 
-    function evacuateToken(address _token, uint _amount) external onlyAdmin {
+    function withdraw(address _token, uint _amount) external onlyAdmin {
         if (_token != address(0)) {
-            IERC20(_token).transfer(_msgSender(), _amount);
+            IERC20(_token).safeTransfer(_msgSender(), _amount);
         } else {
             (bool success, ) = _msgSender().call{ value: _amount }("");
         }

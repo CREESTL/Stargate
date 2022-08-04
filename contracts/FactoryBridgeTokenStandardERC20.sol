@@ -62,7 +62,7 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
 
     function getAllowedToken(address _token) public view returns(bool) {
 //        return allowedTokens[_token];
-        for (uint i; i < allowedTokens.length; i++){
+        for (uint i = 0; i < allowedTokens.length; i++){
             if (allowedTokens[i] == _token) {
                 return true;
             }
@@ -73,7 +73,7 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
     function removeFromAllowedToken(address _token) public onlyAdmin {
 //        require(allowedTokens[_token], "Token is not allowed");
 //        allowedTokens[_token] = false;
-        for (uint i; i < allowedTokens.length; i++){
+        for (uint i = 0; i < allowedTokens.length; i++){
             if (allowedTokens[i] == _token) {
                 allowedTokens[i] = allowedTokens[allowedTokens.length - 1];
                 allowedTokens.pop();
