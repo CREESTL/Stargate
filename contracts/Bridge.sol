@@ -22,6 +22,21 @@ contract Bridge is IBridge, AccessControl {
 
     address public feeWallet;
 
+    struct TokenInfo {
+        string originalChain;
+        string originalTokenAddress;
+        address wrappedTokenAddress;
+    }
+
+//    struct SupportedChain {
+//        string name;
+//        bool isSupported;
+//    }
+
+    TokenInfo[] public tokenInfos;
+//    SupportedChain[] public supportedChains;
+    mapping(string => bool) public supportedChains;
+
     modifier onlyMessengerBot {
         require(hasRole(BOT_MESSENGER_ROLE, _msgSender()), "onlyMessengerBot");
         _;
@@ -44,6 +59,11 @@ contract Bridge is IBridge, AccessControl {
 
     modifier wrappedTokenIsAllowed(address _token) {
         require(allowedWrappedTokens[_token], "invalidToken");
+        _;
+    }
+
+    modifier isSupportedChain(string memory _chain) {
+        require(supportedChains[_chain], "Not supported");
         _;
     }
 
@@ -74,6 +94,7 @@ contract Bridge is IBridge, AccessControl {
     override
     addressIsNull(_token)
     wrappedTokenIsAllowed(_token)
+    isSupportedChain(_direction)
     returns(bool)
     {
         address sender = _msgSender();
@@ -95,6 +116,7 @@ contract Bridge is IBridge, AccessControl {
     payable
     override
     tokenIsAllowed(_token)
+    isSupportedChain(_direction)
     returns(bool)
     {
         address sender = _msgSender();
@@ -200,7 +222,18 @@ contract Bridge is IBridge, AccessControl {
         if (_token != address(0)) {
             IERC20(_token).transfer(_msgSender(), _amount);
         } else {
-            (bool success, ) = _msgSender().call{value: _amount}("");
+            (bool success, ) = _msgSender().call{ value: _amount }("");
         }
+    }
+
+    function setSupportedChain(string memory _chain) external onlyAdmin {
+//        SupportedChain memory chain = SupportedChain(_chain, true);
+//        supportedChains.push(chain);
+        supportedChains[_chain] = true;
+    }
+
+    function removeSupportedChain(string memory _chain) external onlyAdmin {
+//        supportedChains[_index].isSupported = false;
+        supportedChains[_chain] = false;
     }
 }

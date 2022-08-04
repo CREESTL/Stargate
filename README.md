@@ -11,3 +11,6 @@ GAS_REPORT=true npx hardhat test
 npx hardhat node
 npx hardhat run scripts/deploy.js
 ```
+
+
+ganache-cli --fork https://rpc.ankr.com/bsc -a 14
