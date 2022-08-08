@@ -2,41 +2,41 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./interfaces/IBridge.sol";
 import "./interfaces/IBridgeTokenStandardERC20.sol";
+
+import "hardhat/console.sol";
 
 contract Bridge is IBridge, AccessControl {
 
     using SafeERC20 for IERC20;
     using SafeERC20 for IBridgeTokenStandardERC20;
 
-    bytes32 public constant BOT_MESSENGER_ROLE = keccak256("BOT_MESSENGER_ROLE");
-
     IBridgeTokenStandardERC20 public bridgeStandardERC20;
+    // token address -> domainSeparator
+    mapping(address => bytes32) public allowedTokens;
+    mapping(string => bool) public supportedChains;
+    //отслеживаем комиссии
+    mapping(address => uint) public feeTokenAndAmount;
 
-    mapping(address => bool) public allowedTokens;
-    mapping(address => bool) public allowedWrappedTokens;
+    mapping(uint256 => bool) public nonces;
+//    bytes32 public immutable domainSeparatorForNativeToken;
+
+    bytes32 public constant BOT_MESSENGER_ROLE = keccak256("BOT_MESSENGER_ROLE");
+    address public botMessenger;
 
     uint private constant MAX_BP = 1000;
-    uint public feeRate;
-
-    address public feeWallet;
-
+    uint public feeRate; // 3 - 0.3%
+    // для отслеживания токенов, которые пользователь хочет анврапнуть
     struct TokenInfo {
-        string originalChain;
-        string originalTokenAddress;
-        address wrappedTokenAddress;
+        string originalChain; // оригинальный блокчейн
+        string originalTokenAddress; // адрес токена из оригинального блокчейна
+        address wrappedTokenAddress; // враппед адрес на данном блокчейне
     }
 
-//    struct SupportedChain {
-//        string name;
-//        bool isSupported;
-//    }
-
     TokenInfo[] public tokenInfos;
-//    SupportedChain[] public supportedChains;
-    mapping(string => bool) public supportedChains;
 
     modifier onlyMessengerBot {
         require(hasRole(BOT_MESSENGER_ROLE, _msgSender()), "onlyMessengerBot");
@@ -54,12 +54,7 @@ contract Bridge is IBridge, AccessControl {
     }
 
     modifier tokenIsAllowed(address _token) {
-        require(allowedTokens[_token], "invalidToken");
-        _;
-    }
-
-    modifier wrappedTokenIsAllowed(address _token) {
-        require(allowedWrappedTokens[_token], "invalidToken");
+        require(allowedTokens[_token] != 0, "invalidToken");
         _;
     }
 
@@ -71,20 +66,20 @@ contract Bridge is IBridge, AccessControl {
     constructor(
         address _bridgeStandardERC20,
         address _botMessenger,
-        uint _feeRate,
-        address _feeWallet
+        uint _feeRate
     ) {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(BOT_MESSENGER_ROLE, _botMessenger);
+        botMessenger = _botMessenger;
 
         feeRate = _feeRate;
-        feeWallet = _feeWallet;
 
         if (_bridgeStandardERC20 != address(0)) {
             bridgeStandardERC20 = IBridgeTokenStandardERC20(_bridgeStandardERC20);
         }
-    }
 
+    }
+    // передается адрес токен, с которым должно быть взаимодействие
     function burn(
         address _token,
         string memory _to,
@@ -94,16 +89,19 @@ contract Bridge is IBridge, AccessControl {
     external
     override
     addressIsNull(_token)
-    wrappedTokenIsAllowed(_token)
+    tokenIsAllowed(_token)
     isSupportedChain(_direction)
     returns(bool)
     {
         address sender = _msgSender();
         uint feeAmount = _calcFee(_amount);
+        feeTokenAndAmount[_token] += feeAmount;
+
         IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount);
-        IBridgeTokenStandardERC20(_token).burn(address(this), feeAmount);
-        IBridgeTokenStandardERC20(_token).safeTransfer(feeWallet, _amount - feeAmount);
-        emit RequestBridgingWrappedToken(_token, sender, _to, _amount - feeAmount, _direction);
+        IBridgeTokenStandardERC20(_token).burn(address(this), _amount - feeAmount);
+
+        emit Burn(_token, sender, _to, _amount - feeAmount, _direction);
+
         return true;
     }
 
@@ -121,53 +119,97 @@ contract Bridge is IBridge, AccessControl {
     returns(bool)
     {
         address sender = _msgSender();
+
         if (_token != address(0)){
             uint feeAmount = _calcFee(_amount);
+            feeTokenAndAmount[_token] += feeAmount;
+
             IERC20(_token).safeTransferFrom(sender, address(this), _amount);
-            IERC20(_token).safeTransfer(feeWallet, _amount - feeAmount);
-            emit RequestBridgingToken(_token, sender, _to, _amount - feeAmount, _direction);
+
+            emit Lock(_token, sender, _to, _amount - feeAmount, _direction);
+
             return true;
         } else {
             require(msg.value != 0, "Invalid value");
+
             uint feeAmount = _calcFee(msg.value);
-            (bool success, bytes memory data) = feeWallet.call{ value: feeAmount }("");
-            emit RequestBridgingToken(_token, sender, _to, msg.value - feeAmount, _direction);
+            feeTokenAndAmount[_token] += feeAmount;
+
+            emit Lock(_token, sender, _to, msg.value - feeAmount, _direction);
+
             return true;
         }
     }
 
     function mintWithPermit(
         address _token,
-        address _to,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     )
     external
     override
-    onlyMessengerBot
     addressIsNull(_token)
-    wrappedTokenIsAllowed(_token)
+    tokenIsAllowed(_token)
     returns(bool)
     {
-        IBridgeTokenStandardERC20(_token).mint(_to, _amount);
-        emit BridgingWrappedTokenPerformed(_token, _to, _amount);
+        address sender = _msgSender();
+        bytes32 domainSeparator = allowedTokens[_token];
+
+        signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
+        IBridgeTokenStandardERC20(_token).mint(sender, _amount);
+
+        emit MintWithPermit(_token, sender, _amount);
+
         return true;
     }
 
     function unlockWithPermit(
         address _token,
-        address _to,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     )
     external
     override
-    onlyMessengerBot
-    addressIsNull(_token)
     tokenIsAllowed(_token)
     returns(bool)
     {
-        IERC20(_token).safeTransfer(_to, _amount);
-        emit BridgingTokenPerformed(_token, _to, _amount);
-        return true;
+        address sender = _msgSender();
+        if (_token != address(0)) {
+
+            bytes32 domainSeparator = allowedTokens[_token];
+            signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
+
+            require(
+                IERC20(_token).balanceOf(address(this)) >= feeTokenAndAmount[_token] + _amount,
+                "Incorrect amount"
+            );
+
+            IERC20(_token).safeTransfer(sender, _amount);
+
+            emit UnlockWithPermit(_token, sender, _amount);
+
+            return true;
+        } else {
+            bytes32 domainSeparator = allowedTokens[_token];
+            signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
+
+            require(
+                address(this).balance >= feeTokenAndAmount[_token] + _amount,
+                "Incorrect amount"
+            );
+
+            (bool success, ) = sender.call{ value: _amount }("");
+
+            emit UnlockWithPermit(_token, sender, _amount);
+
+            return true;
+        }
     }
 
     function setBridgedStandardERC20(
@@ -186,24 +228,45 @@ contract Bridge is IBridge, AccessControl {
 
     function setAllowedToken(
         address _token,
-        bool _status
+        string memory _name
     )
     external
     onlyAdmin
-//    addressIsNull(_token)
     {
-        allowedTokens[_token] = _status;
+        bytes32 domainSeparator;
+        if (_token != address(0)) {
+            ERC20 token = ERC20(_token);
+            domainSeparator = keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    ),
+                    keccak256(bytes(token.name())),
+                    keccak256(bytes("1")),
+                    block.chainid,
+                    address(this)
+                )
+            );
+        } else {
+            // для нативной валюты
+            require(bytes(_name).length != 0, "Name is empty");
+            domainSeparator = keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    ),
+                    keccak256(bytes(_name)),
+                    keccak256(bytes("1")),
+                    block.chainid,
+                    address(this)
+                )
+            );
+        }
+        allowedTokens[_token] = domainSeparator;
     }
 
-    function setAllowedWrappedToken(
-        address _token,
-        bool _status
-    )
-    external
-    onlyAdmin
-    addressIsNull(_token)
-    {
-        allowedWrappedTokens[_token] = _status;
+    function removeAllowedToken(address _token) external onlyAdmin {
+        allowedTokens[_token] = 0;
     }
 
     function setFeeRate(uint _feeRate) external onlyAdmin {
@@ -211,30 +274,76 @@ contract Bridge is IBridge, AccessControl {
         feeRate = _feeRate;
     }
 
-    function setFeeWallet(address _feeWallet) external onlyAdmin {
-        feeWallet = _feeWallet;
-    }
-
     function _calcFee(uint _amount) private view returns(uint) {
         return _amount * feeRate / MAX_BP;
     }
 
     function withdraw(address _token, uint _amount) external onlyAdmin {
+        require(feeTokenAndAmount[_token] != 0, "Invalid token");
+        require(feeTokenAndAmount[_token] >= _amount, "Incorrect amount");
         if (_token != address(0)) {
             IERC20(_token).safeTransfer(_msgSender(), _amount);
         } else {
             (bool success, ) = _msgSender().call{ value: _amount }("");
         }
+        feeTokenAndAmount[_token] -= _amount;
     }
 
     function setSupportedChain(string memory _chain) external onlyAdmin {
-//        SupportedChain memory chain = SupportedChain(_chain, true);
-//        supportedChains.push(chain);
         supportedChains[_chain] = true;
     }
 
     function removeSupportedChain(string memory _chain) external onlyAdmin {
-//        supportedChains[_index].isSupported = false;
         supportedChains[_chain] = false;
     }
+
+    function signatureVerification(
+        uint256 _nonce,
+        uint256 _amount,
+        uint8 v,
+        bytes32 r,
+        bytes32 s,
+        bytes32 _domainSeparator,
+        address _msgSender
+    ) internal {
+            require(!nonces[_nonce], "Request already processed");
+
+            bytes32 permitDigest = getPermitDigest(
+                _domainSeparator,
+                _msgSender,
+                _amount,
+                _nonce
+            );
+
+            address signer = ecrecover(permitDigest, v, r, s);
+            require(signer == botMessenger, "Invalid signature");
+
+            nonces[_nonce] = true;
+    }
+
+    function getPermitDigest(
+        bytes32 _domainSeparator,
+        address _to,
+        uint256 _amount,
+        uint256 _nonce
+    ) internal pure returns (bytes32) {
+        return
+        keccak256(
+            abi.encodePacked(
+                uint16(0x1901),
+                _domainSeparator,
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "Permit(address spender,uint256 value,uint256 nonce)"
+                        ),
+                        _to,
+                        _amount,
+                        _nonce
+                    )
+                )
+            )
+        );
+    }
+
 }

@@ -116,5 +116,21 @@ describe('FactoryAndToken', () => {
       await bridgeMock.mint(client.address, mintAmount, nt1.address);
       expect(await nt1.balanceOf(client.address)).to.be.equal(mintAmount);
     });
+    it('Burn function', async() => {
+      decimals = BigNumber.from(10).pow(18);
+      var mintAmount = BigNumber.from(500).mul(decimals);
+
+      await factoryToken.createNewToken("Test Token 1", "TT1", 8);
+
+      [address1] = await factoryToken.getAllowedTokens();
+      nt1 = await ethers.getContractAt('IBridgeTokenStandardERC20', address1);
+
+      expect(await nt1.balanceOf(client.address)).to.be.equal(0);
+      await bridgeMock.mint(client.address, mintAmount, nt1.address);
+      expect(await nt1.balanceOf(client.address)).to.be.equal(mintAmount);
+
+      await bridgeMock.connect(client).burn(client.address, mintAmount, nt1.address);
+      expect(await nt1.balanceOf(client.address)).to.be.equal(0);
+    });
   });
 });

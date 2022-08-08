@@ -17,17 +17,23 @@ interface IBridge {
 
     function mintWithPermit(
         address _token,
-        address _to,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) external returns(bool);
 
     function unlockWithPermit(
         address _token,
-        address _to,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) external returns(bool);
 
-    event RequestBridgingToken(
+    event Lock(
         address indexed _token,
         address indexed _sender,
         string _to,
@@ -35,7 +41,7 @@ interface IBridge {
         string _direction
     );
 
-    event RequestBridgingWrappedToken(
+    event Burn(
         address indexed _token,
         address indexed _sender,
         string _to,
@@ -43,13 +49,13 @@ interface IBridge {
         string _direction
     );
 
-    event BridgingWrappedTokenPerformed(
+    event MintWithPermit(
         address indexed _token,
         address indexed _to,
         uint _amount
     );
 
-    event BridgingTokenPerformed(
+    event UnlockWithPermit(
         address indexed _token,
         address indexed _to,
         uint _amount
