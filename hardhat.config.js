@@ -48,16 +48,16 @@ module.exports = {
       gasPrice: 20000000000,
       accounts: {mnemonic: MNEMONIC}
     },
-      eth_mainnet: {
-          url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_MAINNET_API_KEY}`,
-          accounts: { mnemonic: process.env.MNEMONIC },
-          chainId: 1
-      },
-      eth_testnet: {
-          url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_RINKEBY_API_KEY}`,
-          accounts: { mnemonic: process.env.MNEMONIC },
-          chainId: 4
-      }
+    eth_mainnet: {
+        url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_MAINNET_API_KEY}`,
+        accounts: { mnemonic: process.env.MNEMONIC },
+        chainId: 1
+    },
+    eth_testnet: {
+        url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_RINKEBY_API_KEY}`,
+        accounts: { mnemonic: process.env.MNEMONIC },
+        chainId: 4
+    }
   },
   mocha: {
     timeout: 400000
