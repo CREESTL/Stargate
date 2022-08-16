@@ -1,0 +1,26 @@
+{
+  "rinkeby": {
+    "CyberGenie": {
+      "address": "0xb6F063D9612ed74De3f7d339c95125cD14254114",
+      "verification": "https://rinkeby.etherscan.io//address/0xb6F063D9612ed74De3f7d339c95125cD14254114#code"
+    }
+  },
+  "mumbai": {
+    "CyberGenie": {
+      "address": "0x8DA4658EDf968c59B07ABE739fc5217e19f198b4",
+      "verification": "https://mumbai.polygonscan.com/address/0x8DA4658EDf968c59B07ABE739fc5217e19f198b4#code"
+    }
+  },
+  "ethereum": {
+    "CyberGenie": {
+      "address": "",
+      "verification": ""
+    }
+  },
+  "polygon": {
+    "CyberGenie": {
+      "address": "",
+      "verification": ""
+    }
+  }
+}

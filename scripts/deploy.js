@@ -1,29 +1,72 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
-const hre = require("hardhat");
+// SPDX-License-Identifier: MIT 
+const { ethers, network } = require("hardhat");
+const fs = require("fs");
+const path = require("path");
+const delay = require("delay");
+
+
+let contractName = "CyberGenie";
+
+// JSON file to keep information about previous deployments
+const OUTPUT_DEPLOY = require("./deployOutput.json");
 
 async function main() {
-  // const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  // const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  // const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
-  //
-  // const lockedAmount = hre.ethers.utils.parseEther("1");
-  //
-  // const Lock = await hre.ethers.getContractFactory("Lock");
-  // const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
-  //
-  // await lock.deployed();
-  //
-  // console.log("Lock with 1 ETH deployed to:", lock.address);
+
+  console.log(`[NOTICE] Chain for deployment: ${network.name}`);
+  console.log(`[${contractName}]: Start of Deployment...`);
+
+  // Get the contract and deploy it
+  _genie = await ethers.getContractFactory(contractName);
+  genieTx = await _genie.deploy();
+  let genie = await genieTx.deployed();
+
+  console.log(`[${contractName}]: Deployment Finished!`);
+  console.log(`[${contractName}]: Start of Verification...`);
+  
+  // Sleep for 90 seconds, otherwise block explorer will fail
+  await delay(90000);
+
+  // Write deployment and verification info into the JSON file before actual verification
+  // The reason is that verification may fail if you try to verify the same contract again
+  // And the JSON file will not change
+  OUTPUT_DEPLOY[network.name][contractName].address = genie.address;
+  if (network.name === "polygon") {
+    url = "https://polygonscan.com/address/" + genie.address + "#code";
+  } else if (network.name === "mumbai") {
+    url = "https://mumbai.polygonscan.com/address/" + genie.address + "#code";
+  } else if (network.name === "ethereum") {
+    url = "https://etherscan.io//address/" + genie.address + "#code";
+  } else if (network.name === "rinkeby") {
+    url = "https://rinkeby.etherscan.io//address/" + genie.address + "#code";
+  }
+  
+  OUTPUT_DEPLOY[network.name][contractName].verification = url;
+  // Verify the contract
+  // Provide all contract's dependencies as separate files
+  // NOTE It may fail with "Already Verified" error. Do not pay attention to it. Verification will
+  // be done correctly!
+  try { 
+    await hre.run("verify:verify", {
+      address: genie.address,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+
+  console.log(`[${contractName}]: Verification Finished!`);
+  console.log(`See Results in "${__dirname + '/deployOutput.json'}" File`);
+
+  
+  fs.writeFileSync(
+    path.resolve(__dirname, "./deployOutput.json"),
+    JSON.stringify(OUTPUT_DEPLOY, null, "  ")
+  );
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
