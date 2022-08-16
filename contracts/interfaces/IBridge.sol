@@ -62,7 +62,7 @@ interface IBridge {
         bytes32 s
     ) external returns(bool);
 
-    /// @notice Locks tokens if the user is permitted to unlock
+    /// @notice Unlocks tokens if the user is permitted to unlock
     /// @param _token Address of the token to unlock
     /// @param _amount The amount of tokens to unlock
     /// @param _nonce Prevent replay attacks
