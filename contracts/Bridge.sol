@@ -275,7 +275,7 @@ contract Bridge is IBridge, AccessControl {
             emit UnlockWithPermit(_token, sender, _amount);
 
             return true;
-            
+
         } else {
 
             // Get the domain separator of the token
@@ -396,6 +396,9 @@ contract Bridge is IBridge, AccessControl {
     function withdraw(address _token, uint _amount) external onlyAdmin {
         require(feeTokenAndAmount[_token] != 0, "Bridge: no fees were collected for this token!");
         require(feeTokenAndAmount[_token] >= _amount, "Bridge: amount of fees to withdraw is too large!");
+        
+        feeTokenAndAmount[_token] -= _amount;
+        
         if (_token != address(0)) {
             // Send custom ERC20 tokens
             IERC20(_token).safeTransfer(_msgSender(), _amount);
@@ -403,8 +406,7 @@ contract Bridge is IBridge, AccessControl {
             // Or send native tokens
             (bool success, ) = _msgSender().call{ value: _amount }("");
         }
-        // TODO potential reentrancy here!!!!
-        feeTokenAndAmount[_token] -= _amount;
+
     }
 
     /// @notice Adds a chain supported by the bridge
