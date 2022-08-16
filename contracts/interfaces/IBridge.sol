@@ -23,7 +23,7 @@ interface IBridge {
     /// @param to Address of the wallet in the target chain
     /// @param amount The amount of tokens to lock
     /// @param direction The name of the target chain
-    /// @return True if tokens were locked successfuly
+    /// @return True if tokens were locked successfully
     function lock(
         address _token,
         string memory _to,
@@ -37,7 +37,7 @@ interface IBridge {
     /// @param to Address of the wallet in the source chain
     /// @param amount The amount of tokens to burn
     /// @param direction The name of the target chain
-    /// @return True if tokens were burnt successfuly
+    /// @return True if tokens were burnt successfully
     function burn(
         address _token,
         string memory _to,
@@ -52,7 +52,7 @@ interface IBridge {
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were minted successfuly
+    /// @return True if tokens were minted successfully
     function mintWithPermit(
         address _token,
         uint256 _amount,
@@ -69,7 +69,7 @@ interface IBridge {
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfuly
+    /// @return True if tokens were unlocked successfully
     function unlockWithPermit(
         address _token,
         uint256 _amount,

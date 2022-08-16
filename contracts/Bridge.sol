@@ -103,47 +103,12 @@ contract Bridge is IBridge, AccessControl {
     }
 
 
-    /// @notice Burns tokens on a target chain
-    /// @param token Address of the token to burn
-    /// @param to Address of the wallet in the source chain
-    /// @param amount The amount of tokens to burn
-    /// @param direction The name of the target chain
-    /// @return True if tokens were burnt successfuly
-    function burn(
-        address _token,
-        string memory _to,
-        uint256 _amount,
-        string memory _direction
-    )
-    external
-    override
-    notZeroAddress(_token)
-    tokenIsAllowed(_token)
-    isSupportedChain(_direction)
-    returns(bool)
-    {
-        address sender = _msgSender();
-        // Calculate the fee and save it
-        uint feeAmount = _calcFee(_amount);
-        feeTokenAndAmount[_token] += feeAmount;
-
-        // Transfer tokens from caller to the bridge
-        IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount);
-        // Mint all tokens except the fee
-        IBridgeTokenStandardERC20(_token).burn(address(this), _amount - feeAmount);
-
-        // Emit a detailed Burn event
-        emit Burn(_token, sender, _to, _amount - feeAmount, _direction);
-
-        return true;
-    }
-
-    /// @notice Locks token on the source chain
+    /// @notice Locks tokens on the source chain
     /// @param token Address of the token to lock
-    /// @param to Address of the wallet in the target chain
+    /// @param to Address of the wallet on the target chain
     /// @param amount The amount of tokens to lock
     /// @param direction The name of the target chain
-    /// @return True if tokens were locked successfuly
+    /// @return True if tokens were locked successfully
     function lock(
         address _token,
         string memory _to,
@@ -164,7 +129,7 @@ contract Bridge is IBridge, AccessControl {
             uint feeAmount = _calcFee(_amount);
             feeTokenAndAmount[_token] += feeAmount;
 
-            // NOTE ERC20.approve(sender, address(this), _amount) must be called on the frontend 
+            // NOTE ERC20.approve(sender, address(this), _amount + feeAmount) must be called on the frontend 
             // before transfering the tokens
 
             // After this transfer all tokens are in possesion of the bridge contract and they can not be
@@ -172,13 +137,16 @@ contract Bridge is IBridge, AccessControl {
             // does not provide allowance of these tokens for anyone. The only way to transfer tokens from the
             // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
             // Thus, transfered tokens are locked inside the bridge contract
-            IERC20(_token).safeTransferFrom(sender, address(this), _amount);
+            // Transfer additional fee with the initial amount of tokens
+            IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
 
             // Emit the lock event with detailed information
-            emit Lock(_token, sender, _to, _amount - feeAmount, _direction);
+            emit Lock(_token, sender, _to, _amount, _direction);
 
             return true;
+
         } else {
+
             // If the user tried to lock the zero address, then only fees are payed
             require(msg.value != 0, "Bridge: no tokens were sent with transaction!");
 
@@ -186,12 +154,49 @@ contract Bridge is IBridge, AccessControl {
             uint feeAmount = _calcFee(msg.value);
             feeTokenAndAmount[_token] += feeAmount;
 
-            // The lock event is till emitted
+            // The lock event is still emitted
             emit Lock(_token, sender, _to, msg.value - feeAmount, _direction);
 
             return true;
         }
     }
+
+
+    /// @notice Burns tokens on a target chain
+    /// @param token Address of the token to burn
+    /// @param to Address of the wallet in the source chain
+    /// @param amount The amount of tokens to burn
+    /// @param direction The name of the target chain
+    /// @return True if tokens were burnt successfully
+    function burn(
+        address _token,
+        string memory _to,
+        uint256 _amount,
+        string memory _direction
+    )
+    external
+    override
+    notZeroAddress(_token)
+    tokenIsAllowed(_token)
+    isSupportedChain(_direction)
+    returns(bool)
+    {
+        address sender = _msgSender();
+        // Calculate the fee and save it
+        uint feeAmount = _calcFee(_amount);
+        feeTokenAndAmount[_token] += feeAmount;
+
+        // NOTE ERC20.approve(sender, address(this), _amount + feeAmount) must be called on the frontend 
+        // before transfering the tokens
+
+        // Transfer user's tokens (and a fee) to the bridge contract and burn them immediately
+        IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
+        // Burn all tokens except the fee
+        IBridgeTokenStandardERC20(_token).burn(address(this), _amount);
+
+        return true;
+    }
+
 
     /// @notice Mints tokens if the user is permitted to mint
     /// @param _token Address of the token to mint
@@ -200,7 +205,7 @@ contract Bridge is IBridge, AccessControl {
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were minted successfuly
+    /// @return True if tokens were minted successfully
     function mintWithPermit(
         address _token,
         uint256 _amount,
@@ -236,7 +241,7 @@ contract Bridge is IBridge, AccessControl {
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfuly
+    /// @return True if tokens were unlocked successfully
     function unlockWithPermit(
         address _token,
         uint256 _amount,
@@ -270,6 +275,7 @@ contract Bridge is IBridge, AccessControl {
             emit UnlockWithPermit(_token, sender, _amount);
 
             return true;
+            
         } else {
 
             // Get the domain separator of the token
@@ -281,7 +287,7 @@ contract Bridge is IBridge, AccessControl {
             // to the user after unlock
             require(
                 address(this).balance >= feeTokenAndAmount[_token] + _amount,
-                "Incorrect amount"
+                "Bridge: Not enough tokens to unlock!"
             );
 
             (bool success, ) = sender.call{ value: _amount }("");
@@ -397,6 +403,7 @@ contract Bridge is IBridge, AccessControl {
             // Or send native tokens
             (bool success, ) = _msgSender().call{ value: _amount }("");
         }
+        // TODO potential reentrancy here!!!!
         feeTokenAndAmount[_token] -= _amount;
     }
 
