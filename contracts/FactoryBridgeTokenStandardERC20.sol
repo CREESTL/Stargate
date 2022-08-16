@@ -8,88 +8,107 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IFactoryBridgeTokenStandardERC20.sol";
 import "./interfaces/IBridgeTokenStandardERC20.sol";
 
+
+/// @title A factory of custom ERC20 tokens used in the bridge
 contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, AccessControl {
 
     using Clones for address;
 
     address public bridge;
 
-//    mapping(address => bool) private allowedTokens;
-    address[] private allowedTokens;
+    /// @dev A map of tokens that can be used in the bridge
+    mapping(address => bool) private allowedTokens;
 
+    /// @dev A custom ERC20 token
     IBridgeTokenStandardERC20 public bridgeTokenStandard;
 
     bytes32 public constant BOT_MESSANGER_ROLE = keccak256("BOT_MESSANGER_ROLE");
 
+    /// @dev Checks if a caller has admin rights
     modifier onlyAdmin {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "onlyAdmin");
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "Factory: caller is not an admin!");
         _;
     }
 
+    /// @notice Sets the default token as well as the bridge of the tokens
+    /// @param _bridgeTokenStandard Address of the custom ERC20 token to be used in the bridge
+    /// @param _bridge Address of the briage of the tokens
     constructor(address _bridgeTokenStandard, address _bridge) {
+        // Caller gets admin rights
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        // Initialise the prototype of the token
         if (_bridgeTokenStandard != address(0)) {
             bridgeTokenStandard = IBridgeTokenStandardERC20(_bridgeTokenStandard);
         }
+        // Initialize the bridge 
         if (_bridge != address(0)) {
             bridge = _bridge;
         }
     }
 
-    //TODO: подумать над методом защиты от повторного развертывания токена
+    //TODO: prevent repeated token creation!
+    /// @notice Creates a new token to be used in the bridge
+    /// @param _name The name of the new token
+    /// @param _symbol The symbol of the new token
+    /// @param _decimals The number of decimals of the new token
+    /// @return The address of a new token
     function createNewToken(
         string memory _name,
         string memory _symbol,
         uint8 _decimals
     ) external onlyAdmin returns (address) {
-        require(address(bridgeTokenStandard) != address(0), "Token template is not install");
-        require(bridge != address(0), "Token template is not install");
-        address token = address(bridgeTokenStandard).clone();
-        IBridgeTokenStandardERC20(token).configure(
+        // Token can not have a zero address
+        require(address(bridgeTokenStandard) != address(0), "Factory: token can not have a zero address!");
+        // Bridge can not have a zero address
+        require(bridge != address(0), "Factory: bridge can not have a zero address!");
+        // Get the address of the token prototype
+        address tokenAddress = address(bridgeTokenStandard).clone();
+        // Connect the interface to this address and configure the prototype this way
+        IBridgeTokenStandardERC20(tokenAddress).configure(
             bridge,
             _name,
             _symbol,
             _decimals
         );
-//        allowedTokens[token] = true;
-//        emit CreateNewToken(token);
-        allowedTokens.push(token);
-        return token;
+        // Add the address of a fresh token to the list of tokens that can be used in the bridge
+        allowedTokens[tokenAddress] = true;
+
+        emit CreateNewToken(tokenAddress);
+        
+        return tokenAddress;
     }
 
+
+    /// @notiсe Checks if token is allowed to be used in the bridge
+    /// @param _token The address of the token to check
+    /// @return True if token is allowed, false - if not
+    function getAllowedToken(address _token) public view returns(bool) {
+        return allowedTokens[_token];
+    }
+
+
+    /// @notice Forbids the token to be used in the bridge
+    /// @param _token The address of the token to forbid
+    function removeFromAllowedToken(address _token) public onlyAdmin {
+        allowedTokens[_token] = false;
+    }
+    
+    /// @notice Sets the address of the bridge of the tokens
+    /// @param _bridge The address of the bridge
     function setBridge(address _bridge) external onlyAdmin {
-        require(_bridge != address(0), "Address is null");
+        require(_bridge != address(0), "Factory: bridge can not have a zero address!");
         bridge = _bridge;
     }
 
-    function getAllowedToken(address _token) public view returns(bool) {
-//        return allowedTokens[_token];
-        for (uint i = 0; i < allowedTokens.length; i++){
-            if (allowedTokens[i] == _token) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function removeFromAllowedToken(address _token) public onlyAdmin {
-//        require(allowedTokens[_token], "Token is not allowed");
-//        allowedTokens[_token] = false;
-        for (uint i = 0; i < allowedTokens.length; i++){
-            if (allowedTokens[i] == _token) {
-                allowedTokens[i] = allowedTokens[allowedTokens.length - 1];
-                allowedTokens.pop();
-                break;
-            }
-        }
-
-    }
-
+    /// @notice Sesta the default bridge token
+    /// @param _bridgeTokenStandardERC20 The address of the token
     function setBridgeTokenStandardERC20(address _bridgeTokenStandardERC20) public onlyAdmin {
-        require(_bridgeTokenStandardERC20 != address(0), "Address is null");
+        require(_bridgeTokenStandardERC20 != address(0), "Factory: token can not have a zero address!");
         bridgeTokenStandard = IBridgeTokenStandardERC20(_bridgeTokenStandardERC20);
     }
 
+    // TODO replace with array?
+    /// @notice Returns the map of allowed tokens
     function getAllowedTokens() public view returns (address[] memory) {
         return allowedTokens;
     }
