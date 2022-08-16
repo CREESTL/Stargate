@@ -16,8 +16,10 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
 
     address public bridge;
 
-    /// @dev A map of tokens that can be used in the bridge
-    mapping(address => bool) private allowedTokens;
+    /// @dev A map of tokens that can be used in the bridge (for checking)
+    mapping(address => bool) private allowedMap;
+    /// @dev A list of tokens that can be used in the bridge (for storing and using on frontend)
+    address[] private allowedList;
 
     /// @dev A custom ERC20 token
     IBridgeTokenStandardERC20 public bridgeTokenStandard;
@@ -71,7 +73,8 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
             _decimals
         );
         // Add the address of a fresh token to the list of tokens that can be used in the bridge
-        allowedTokens[tokenAddress] = true;
+        allowedMap[tokenAddress] = true;
+        allowedList.push(tokenAddress);
 
         emit CreateNewToken(tokenAddress);
         
@@ -83,14 +86,21 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
     /// @param _token The address of the token to check
     /// @return True if token is allowed, false - if not
     function getAllowedToken(address _token) public view returns(bool) {
-        return allowedTokens[_token];
+        return allowedMap[_token];
     }
 
 
     /// @notice Forbids the token to be used in the bridge
     /// @param _token The address of the token to forbid
     function removeFromAllowedToken(address _token) public onlyAdmin {
-        allowedTokens[_token] = false;
+        allowedMap[_token] = false;
+        uint length = allowedList.length;
+        // Full iteration is the only way. Costly operation.
+        for (uint i = 0; i < length; i++) {
+            if (allowedList[i].address == _token) {
+                delete allowedList[i];
+            }
+        }
     }
     
     /// @notice Sets the address of the bridge of the tokens
@@ -100,7 +110,7 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
         bridge = _bridge;
     }
 
-    /// @notice Sesta the default bridge token
+    /// @notice Sets the default bridge token
     /// @param _bridgeTokenStandardERC20 The address of the token
     function setBridgeTokenStandardERC20(address _bridgeTokenStandardERC20) public onlyAdmin {
         require(_bridgeTokenStandardERC20 != address(0), "Factory: token can not have a zero address!");
@@ -110,6 +120,6 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
     // TODO replace with array?
     /// @notice Returns the map of allowed tokens
     function getAllowedTokens() public view returns (address[] memory) {
-        return allowedTokens;
+        return allowedList;
     }
 }
