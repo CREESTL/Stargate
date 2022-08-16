@@ -12,8 +12,10 @@ import "./interfaces/IBridgeTokenStandardERC20.sol";
 /// @title A factory of custom ERC20 tokens used in the bridge
 contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, AccessControl {
 
+    /// @dev Allows to call `clone()` method on address
     using Clones for address;
 
+    /// @dev The address of the bridge contract
     address public bridge;
 
     /// @dev A map of tokens that can be used in the bridge (for checking)
@@ -97,7 +99,7 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
         uint length = allowedList.length;
         // Full iteration is the only way. Costly operation.
         for (uint i = 0; i < length; i++) {
-            if (allowedList[i].address == _token) {
+            if (allowedList[i] == _token) {
                 delete allowedList[i];
             }
         }
@@ -117,7 +119,6 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
         bridgeTokenStandard = IBridgeTokenStandardERC20(_bridgeTokenStandardERC20);
     }
 
-    // TODO replace with array?
     /// @notice Returns the map of allowed tokens
     function getAllowedTokens() public view returns (address[] memory) {
         return allowedList;
