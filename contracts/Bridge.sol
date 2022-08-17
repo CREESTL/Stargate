@@ -215,8 +215,9 @@ contract Bridge is IBridge, AccessControl {
         bytes32 domainSeparator = getDomainSeparator(token, "1", block.chainId, address(this)); 
 
         // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has locked tokens on the source chain
         signatureVerification(nonce, amount, v, r, s, token, sender);
-        // If the signature was verified - mint the required amount of tokens
+        // Mint wrapped tokens on the other chain 
         IWrappedERC20Template(token).mint(sender, amount);
 
         emit MintWithPermit(token, sender, amount);
@@ -250,17 +251,17 @@ contract Bridge is IBridge, AccessControl {
         bytes32 domainSeparator = getDomainSeparator(token, "1", block.chainId, address(this)); 
 
         // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has burnt tokens on the target chain
         signatureVerification(nonce, amount, v, r, s, domainSeparator, sender);
 
         require(
-            // TODO use IWrappedERC20Template instead???
-            IERC20(token).balanceOf(address(this)) >= feeTokenAndAmount[token] + amount,
+            IWrappedERC20Template(token).balanceOf(address(this)) >= feeTokenAndAmount[token] + amount,
             "Bridge: Not enough tokens to unlock!"
         );
 
         // This is the only way to withdraw locked tokens from the bridge contract
         // (see `lock` method of this contract)
-        IERC20(token).safeTransfer(sender, amount);
+        IWrappedERC20Template(token).safeTransfer(sender, amount);
 
         emit UnlockWithPermit(token, sender, amount);
 
@@ -312,7 +313,7 @@ contract Bridge is IBridge, AccessControl {
         
         if (token != address(0)) {
             // Send custom ERC20 tokens
-            IERC20(token).safeTransfer(msg.sender, amount);
+            IWrappedERC20Template(token).safeTransfer(msg.sender, amount);
         } else {
             // Or send native tokens
             (bool success, ) = msg.sender.call{ value: amount }("");
