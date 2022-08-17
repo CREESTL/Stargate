@@ -20,13 +20,11 @@ interface IBridge {
     // TODO finish
     /// @notice Locks token on the source chain
     /// @param token Address of the token to lock
-    /// @param _receiverAddress Address of the wallet in the target chain
     /// @param amount The amount of tokens to lock
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lock(
         address _token,
-        string memory _receiverAddress,
         uint256 _amount,
         string memory _targetChain
     ) external payable returns(bool);
@@ -82,13 +80,11 @@ interface IBridge {
     // @notice Indicates that some tokens were locked in the source chain
     /// @param _token Address of the token to lock
     /// @param _sender The sender of the locking transaction
-    /// @param _receiverAddress Address of the wallet in the target chain
     /// @param _amount The amount of tokens to lock
     /// @param _targetChain The name of the target chain
     event Lock(
         address indexed _token,
         address indexed _sender,
-        string _receiverAddress,
         uint _amount,
         string _targetChain
     );

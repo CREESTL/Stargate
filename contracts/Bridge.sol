@@ -106,13 +106,11 @@ contract Bridge is IBridge, AccessControl {
 
     /// @notice Locks tokens on the source chain
     /// @param token Address of the token to lock
-    /// @param to Address of the wallet on the target chain
     /// @param amount The amount of tokens to lock
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lock(
         address _token,
-        string memory _receiverAddress,
         uint256 _amount,
         string memory _targetChain
     )
@@ -142,7 +140,7 @@ contract Bridge is IBridge, AccessControl {
             IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
 
             // Emit the lock event with detailed information
-            emit Lock(_token, sender, _receiverAddress, _amount, _targetChain);
+            emit Lock(_token, sender, _amount, _targetChain);
 
             return true;
 
@@ -156,7 +154,7 @@ contract Bridge is IBridge, AccessControl {
             feeTokenAndAmount[_token] += feeAmount;
 
             // The lock event is still emitted
-            emit Lock(_token, sender, _receiverAddress, msg.value - feeAmount, _targetChain);
+            emit Lock(_token, sender, msg.value - feeAmount, _targetChain);
 
             return true;
         }
@@ -451,7 +449,7 @@ contract Bridge is IBridge, AccessControl {
             // Recover the signer of the PERMIT_DIGEST
             address signer = ecrecover(permitDigest, v, r, s);
             // Compare the recover and the required signer
-            require(signer == botMessenger, "Bridge: invalid signature!);
+            require(signer == botMessenger, "Bridge: invalid signature!");
 
             nonces[_nonce] = true;
     }
@@ -489,7 +487,7 @@ contract Bridge is IBridge, AccessControl {
                 _amount,
                 _nonce
             )
-        )
+        );
     }
 
 }
