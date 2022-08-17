@@ -169,7 +169,6 @@ contract Bridge is IBridge, AccessControl {
     /// @return True if tokens were burnt successfully
     function burn(
         address _token,
-        string memory _receiverAddress,
         uint256 _amount,
         string memory _targetChain
     )
@@ -192,6 +191,8 @@ contract Bridge is IBridge, AccessControl {
         IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
         // Burn all tokens except the fee
         IBridgeTokenStandardERC20(_token).burn(address(this), _amount);
+
+        emit Burn(_token, sender, _amount, _targetChain);
 
         return true;
     }

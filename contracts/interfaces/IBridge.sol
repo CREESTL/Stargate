@@ -17,7 +17,6 @@ interface IBridge {
      */
     
 
-    // TODO finish
     /// @notice Locks token on the source chain
     /// @param token Address of the token to lock
     /// @param amount The amount of tokens to lock
@@ -29,16 +28,13 @@ interface IBridge {
         string memory _targetChain
     ) external payable returns(bool);
 
-    // TODO finish
     /// @notice Burns tokens on a target chain
     /// @param token Address of the token to burn
-    /// @param _receiverAddress Address of the wallet in the source chain
     /// @param amount The amount of tokens to burn
     /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
     function burn(
         address _token,
-        string memory _receiverAddress,
         uint256 _amount,
         string memory _targetChain
     ) external returns(bool);
@@ -92,13 +88,11 @@ interface IBridge {
     /// @notice Indicates that some tokens were burnt in the target chain
     /// @param _token Address of the token to burn
     /// @param _sender The sender of the burning transaction
-    /// @param _receiverAddress Address of the wallet in the source chain
     /// @param _amount The amount of tokens to burn
     /// @param _targetChain The name of the source chain
     event Burn(
         address indexed _token,
         address indexed _sender,
-        string _receiverAddress,
         uint _amount,
         string _targetChain
     );
