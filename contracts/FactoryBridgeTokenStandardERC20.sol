@@ -5,12 +5,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-import "./interfaces/IFactoryBridgeTokenStandardERC20.sol";
-import "./interfaces/IBridgeTokenStandardERC20.sol";
+import "./interfaces/IFactoryWrappedERC20Template.sol";
+import "./interfaces/IWrappedERC20Template.sol";
 
 
 /// @title A factory of custom ERC20 tokens used in the bridge
-contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, AccessControl {
+contract FactoryWrappedERC20Template is IFactoryWrappedERC20Template, AccessControl {
 
     /// @dev Allows to call `clone()` method on address
     using Clones for address;
@@ -24,7 +24,7 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
     address[] private allowedList;
 
     /// @dev A custom ERC20 token
-    IBridgeTokenStandardERC20 public bridgeTokenStandard;
+    IWrappedERC20Template public bridgeTokenStandard;
 
     bytes32 public constant BOT_MESSANGER_ROLE = keccak256("BOT_MESSANGER_ROLE");
 
@@ -42,7 +42,7 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         // Initialise the prototype of the token
         if (_bridgeTokenStandard != address(0)) {
-            bridgeTokenStandard = IBridgeTokenStandardERC20(_bridgeTokenStandard);
+            bridgeTokenStandard = IWrappedERC20Template(_bridgeTokenStandard);
         }
         // Initialize the bridge 
         if (_bridge != address(0)) {
@@ -69,7 +69,7 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
         // Get the address of the token prototype
         address tokenAddress = address(bridgeTokenStandard).clone();
         // Connect the interface to this address and configure the prototype this way
-        IBridgeTokenStandardERC20(tokenAddress).configure(
+        IWrappedERC20Template(tokenAddress).configure(
             bridge,
             _name,
             _symbol,
@@ -115,9 +115,9 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
 
     /// @notice Sets the default bridge token
     /// @param _bridgeTokenStandardERC20 The address of the token
-    function setBridgeTokenStandardERC20(address _bridgeTokenStandardERC20) public onlyAdmin {
+    function setWrappedERC20Template(address _bridgeTokenStandardERC20) public onlyAdmin {
         require(_bridgeTokenStandardERC20 != address(0), "Factory: token can not have a zero address!");
-        bridgeTokenStandard = IBridgeTokenStandardERC20(_bridgeTokenStandardERC20);
+        bridgeTokenStandard = IWrappedERC20Template(_bridgeTokenStandardERC20);
     }
 
     /// @notice Returns the map of allowed tokens

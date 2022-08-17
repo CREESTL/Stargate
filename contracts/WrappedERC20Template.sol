@@ -5,10 +5,10 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-import "./interfaces/IBridgeTokenStandardERC20.sol";
+import "./interfaces/IWrappedERC20Template.sol";
 
 /// @title A custom ERC20 contract used in the bridge
-contract BridgeTokenStandardERC20 is IBridgeTokenStandardERC20, ERC20, Initializable {
+contract WrappedERC20Template is IWrappedERC20Template, ERC20, Initializable {
 
     string internal __name;
     string internal __symbol;
@@ -45,19 +45,19 @@ contract BridgeTokenStandardERC20 is IBridgeTokenStandardERC20, ERC20, Initializ
 
     /// @notice Returns the name of the token
     /// @return The name of the token
-    function name() public view override(ERC20, IBridgeTokenStandardERC20) returns(string memory) {
+    function name() public view override(ERC20, IWrappedERC20Template) returns(string memory) {
         return __name;
     }
 
     /// @notice Returns the symbol of the token
     /// @return The symbol of the token
-    function symbol() public view override(ERC20, IBridgeTokenStandardERC20) returns(string memory) {
+    function symbol() public view override(ERC20, IWrappedERC20Template) returns(string memory) {
         return __symbol;
     }
 
     /// @notice Returns number of decimals of the token
     /// @return The number of decimals of the token
-    function decimals() public view override(ERC20, IBridgeTokenStandardERC20) returns(uint8) {
+    function decimals() public view override(ERC20, IWrappedERC20Template) returns(uint8) {
         return __decimals;
     }
 

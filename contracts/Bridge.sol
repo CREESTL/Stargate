@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./interfaces/IBridge.sol";
-import "./interfaces/IBridgeTokenStandardERC20.sol";
+import "./interfaces/IWrappedERC20Template.sol";
 
 import "hardhat/console.sol";
 
@@ -15,9 +15,9 @@ import "hardhat/console.sol";
 contract Bridge is IBridge, AccessControl {
 
     using SafeERC20 for IERC20;
-    using SafeERC20 for IBridgeTokenStandardERC20;
+    using SafeERC20 for IWrappedERC20Template;
 
-    IBridgeTokenStandardERC20 public bridgeStandardERC20;
+    IWrappedERC20Template public bridgeStandardERC20;
 
     ///@dev [token address -> domainSeparator] map
     mapping(address => bytes32) public allowedTokens;
@@ -98,7 +98,7 @@ contract Bridge is IBridge, AccessControl {
 
         // Create a modified ERC20 token to be used across the bridge
         if (_bridgeStandardERC20 != address(0)) {
-            bridgeStandardERC20 = IBridgeTokenStandardERC20(_bridgeStandardERC20);
+            bridgeStandardERC20 = IWrappedERC20Template(_bridgeStandardERC20);
         }
 
     }
@@ -137,7 +137,7 @@ contract Bridge is IBridge, AccessControl {
             // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
             // Thus, transfered tokens are locked inside the bridge contract
             // Transfer additional fee with the initial amount of tokens
-            IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
+            IWrappedERC20Template(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
 
             // Emit the lock event with detailed information
             emit Lock(_token, sender, _amount, _targetChain);
@@ -188,9 +188,9 @@ contract Bridge is IBridge, AccessControl {
         // before transfering the tokens
 
         // Transfer user's tokens (and a fee) to the bridge contract and burn them immediately
-        IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
+        IWrappedERC20Template(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
         // Burn all tokens except the fee
-        IBridgeTokenStandardERC20(_token).burn(address(this), _amount);
+        IWrappedERC20Template(_token).burn(address(this), _amount);
 
         emit Burn(_token, sender, _amount, _targetChain);
 
@@ -227,7 +227,7 @@ contract Bridge is IBridge, AccessControl {
         // Verify the signature (contains v, r, s) using the domain separator
         signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
         // If the signature was verified - mint the required amount of tokens
-        IBridgeTokenStandardERC20(_token).mint(sender, _amount);
+        IWrappedERC20Template(_token).mint(sender, _amount);
 
         emit MintWithPermit(_token, sender, _amount);
 
@@ -307,7 +307,7 @@ contract Bridge is IBridge, AccessControl {
     onlyAdmin
     notZeroAddress(_bridgeStandardERC20)
     {
-        bridgeStandardERC20 = IBridgeTokenStandardERC20(_bridgeStandardERC20);
+        bridgeStandardERC20 = IWrappedERC20Template(_bridgeStandardERC20);
     }
 
     /// @notice Sets the admin

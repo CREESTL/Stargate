@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 /// @title An interface for a custom ERC20 contracts used in the bridge
-interface IBridgeTokenStandardERC20 is IERC20{
+interface IWrappedERC20Template is IERC20{
     /// @notice Configures internal variables
     /// @param _bridge The adress of the bridge for the tokens
     /// @param _name The name of the token
