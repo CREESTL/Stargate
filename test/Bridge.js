@@ -191,9 +191,9 @@ describe('Bridge', () => {
             tokenStandart2 = await WrappedERC20TemplateOther.deploy();
             factoryToken2 = await WrappedERC20TemplateOther.deploy(tokenStandart2.address, bridge.address);
 
-            expect(await bridge.bridgeStandardERC20()).to.be.equal(tokenStandart.address);
+            expect(await bridge.wrappedToken()).to.be.equal(tokenStandart.address);
             await bridge.setBridgedStandardERC20(tokenStandart2.address);
-            expect(await bridge.bridgeStandardERC20()).to.be.equal(tokenStandart2.address);
+            expect(await bridge.wrappedToken()).to.be.equal(tokenStandart2.address);
 
             await expect(bridge.connect(client).setBridgedStandardERC20(tokenStandart2.address))
                 .to.revertedWith("onlyAdmin");
