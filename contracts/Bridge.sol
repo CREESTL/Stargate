@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./interfaces/IBridge.sol";
-import "./interfaces/IWrappedERC20Template.sol";
-import "./WrappedERC20Template.sol";
+import "./interfaces/IWrappedERC20.sol";
+import "./WrappedERC20.sol";
 
 import "hardhat/console.sol";
 
@@ -16,9 +16,9 @@ import "hardhat/console.sol";
 contract Bridge is IBridge, AccessControl {
 
     using SafeERC20 for IERC20;
-    using SafeERC20 for IWrappedERC20Template;
+    using SafeERC20 for IWrappedERC20;
 
-    IWrappedERC20Template public wrappedToken;
+    IWrappedERC20 public wrappedToken;
 
     ///@dev Names of supported chains
     mapping(string => bool) public supportedChains;
@@ -78,7 +78,7 @@ contract Bridge is IBridge, AccessControl {
 
         // Create a modified ERC20 token to be used across the bridge
         if (_wrappedToken != address(0)) {
-            wrappedToken = IWrappedERC20Template(_wrappedToken);
+            wrappedToken = IWrappedERC20(_wrappedToken);
         }
 
     }
@@ -116,7 +116,7 @@ contract Bridge is IBridge, AccessControl {
             // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
             // Thus, transfered tokens are locked inside the bridge contract
             // Transfer additional fee with the initial amount of tokens
-            IWrappedERC20Template(token).safeTransferFrom(sender, address(this), amount + feeAmount);
+            IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
 
             // Emit the lock event with detailed information
             emit Lock(token, sender, amount, targetChain);
@@ -165,9 +165,9 @@ contract Bridge is IBridge, AccessControl {
         // before transfering the tokens
 
         // Transfer user's tokens (and a fee) to the bridge contract and burn them immediately
-        IWrappedERC20Template(token).safeTransferFrom(sender, address(this), amount + feeAmount);
+        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
         // Burn all tokens except the fee
-        IWrappedERC20Template(token).burn(address(this), amount);
+        IWrappedERC20(token).burn(address(this), amount);
 
         emit Burn(token, sender, amount, targetChain);
 
@@ -202,7 +202,7 @@ contract Bridge is IBridge, AccessControl {
         // This will prove that the user has locked tokens on the source chain
         signatureVerification(nonce, amount, v, r, s, token, sender);
         // Mint wrapped tokens on the other chain 
-        IWrappedERC20Template(token).mint(sender, amount);
+        IWrappedERC20(token).mint(sender, amount);
 
         emit MintWithPermit(token, sender, amount);
 
@@ -236,13 +236,13 @@ contract Bridge is IBridge, AccessControl {
         signatureVerification(nonce, amount, v, r, s, token, sender);
 
         require(
-            IWrappedERC20Template(token).balanceOf(address(this)) >= feeTokenAndAmount[token] + amount,
+            IWrappedERC20(token).balanceOf(address(this)) >= feeTokenAndAmount[token] + amount,
             "Bridge: Not enough tokens to unlock!"
         );
 
         // This is the only way to withdraw locked tokens from the bridge contract
         // (see `lock` method of this contract)
-        IWrappedERC20Template(token).safeTransfer(sender, amount);
+        IWrappedERC20(token).safeTransfer(sender, amount);
 
         emit UnlockWithPermit(token, sender, amount);
 
@@ -259,7 +259,7 @@ contract Bridge is IBridge, AccessControl {
     onlyAdmin
     notZeroAddress(newWrappedToken)
     {
-        wrappedToken = IWrappedERC20Template(newWrappedToken);
+        wrappedToken = IWrappedERC20(newWrappedToken);
     }
 
     /// @notice Sets the admin
@@ -294,7 +294,7 @@ contract Bridge is IBridge, AccessControl {
         
         if (token != address(0)) {
             // Send custom ERC20 tokens
-            IWrappedERC20Template(token).safeTransfer(msg.sender, amount);
+            IWrappedERC20(token).safeTransfer(msg.sender, amount);
         } else {
             // Or send native tokens
             (bool success, ) = msg.sender.call{ value: amount }("");
@@ -378,7 +378,7 @@ contract Bridge is IBridge, AccessControl {
     ) internal view returns (bytes32) {
         require(_token != address(0), "Bridge: invalid address of transfered token!");
 
-        WrappedERC20Template token = WrappedERC20Template(_token);
+        WrappedERC20 token = WrappedERC20(_token);
         
         bytes32 domainSeparator = keccak256(
             abi.encode(

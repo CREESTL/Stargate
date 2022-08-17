@@ -5,8 +5,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import "./interfaces/IWrappedERC20Factory.sol";
-import "./interfaces/IWrappedERC20Template.sol";
-import "./WrappedERC20Template.sol";
+import "./interfaces/IWrappedERC20.sol";
+import "./WrappedERC20.sol";
 
 
 /// @title A factory of custom ERC20 tokens used in the bridge
@@ -61,7 +61,7 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
         uint8 decimals
     ) external onlyAdmin returns (address) {
         // This will create a new token on the same bridge the factory is deployed on (target chain)
-        WrappedERC20Template wrappedToken = new WrappedERC20Template(name, symbol, decimals);
+        WrappedERC20 wrappedToken = new WrappedERC20(name, symbol, decimals);
         originalTargetTokens[originalToken] = address(wrappedToken);
 
         emit CreateNewToken(address(wrappedToken));

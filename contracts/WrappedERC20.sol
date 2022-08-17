@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "./interfaces/IWrappedERC20Template.sol";
+import "./interfaces/IWrappedERC20.sol";
 
 /// @title A custom ERC20 contract used in the bridge
-contract WrappedERC20Template is IWrappedERC20Template, ERC20 {
+contract WrappedERC20 is IWrappedERC20, ERC20 {
 
     address private _bridge;
     uint8 private _decimals;
