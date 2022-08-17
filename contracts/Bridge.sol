@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./interfaces/IBridge.sol";
 import "./interfaces/IWrappedERC20Template.sol";
+import ".WrappedERC20Template.sol";
 
 import "hardhat/console.sol";
 
@@ -19,8 +20,6 @@ contract Bridge is IBridge, AccessControl {
 
     IWrappedERC20Template public wrappedToken;
 
-    ///@dev [token address -> domainSeparator] map
-    mapping(address => bytes32) public allowedTokens;
     ///@dev Names of supported chains
     mapping(string => bool) public supportedChains;
     ///@dev Monitor fees
@@ -64,12 +63,6 @@ contract Bridge is IBridge, AccessControl {
     /// @dev Checks if address is not a zero address
     modifier notZeroAddress(address _address) {
         require(_address != address(0), "Bridge: the address is a zero address!");
-        _;
-    }
-
-    /// @dev Checks if tokens is allowes to be minted
-    modifier tokenIsAllowed(address _token) {
-        require(allowedTokens[_token] != 0, "Bridge: the token is not allowed!");
         _;
     }
 
@@ -117,7 +110,6 @@ contract Bridge is IBridge, AccessControl {
     external
     payable
     override
-    tokenIsAllowed(_token)
     isSupportedChain(_targetChain)
     returns(bool)
     {
@@ -175,7 +167,6 @@ contract Bridge is IBridge, AccessControl {
     external
     override
     notZeroAddress(_token)
-    tokenIsAllowed(_token)
     isSupportedChain(_targetChain)
     returns(bool)
     {
@@ -217,15 +208,14 @@ contract Bridge is IBridge, AccessControl {
     external
     override
     notZeroAddress(_token)
-    tokenIsAllowed(_token)
     returns(bool)
     {   
         address sender = _msgSender();
         // Get the domain separator of the token
-        bytes32 domainSeparator = allowedTokens[_token];
+        bytes32 domainSeparator = getDomainSeparator(_token, "1", block.chainId, address(this)); 
 
         // Verify the signature (contains v, r, s) using the domain separator
-        signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
+        signatureVerification(_nonce, _amount, v, r, s, _token, sender);
         // If the signature was verified - mint the required amount of tokens
         IWrappedERC20Template(_token).mint(sender, _amount);
 
@@ -251,51 +241,31 @@ contract Bridge is IBridge, AccessControl {
         bytes32 s
     )
     external
-    override
-    tokenIsAllowed(_token)
+    override)
     returns(bool)
     {
         address sender = _msgSender();
-        if (_token != address(0)) {
-            
-            // Get the domain separator of the token
-            bytes32 domainSeparator = allowedTokens[_token];
-            // Verify the signature (contains v, r, s) using the domain separator
-            signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
 
-            require(
-                IERC20(_token).balanceOf(address(this)) >= feeTokenAndAmount[_token] + _amount,
-                "Bridge: Not enough tokens to unlock!"
-            );
+        // Get the domain separator of the token
+        bytes32 domainSeparator = getDomainSeparator(_token, "1", block.chainId, address(this)); 
 
-            // This is the only way to withdraw locked tokens from the bridge contract
-            // (see `lock` method)
-            IERC20(_token).safeTransfer(sender, _amount);
+        // Verify the signature (contains v, r, s) using the domain separator
+        signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
 
-            emit UnlockWithPermit(_token, sender, _amount);
+        require(
+            // TODO use IWrappedERC20Template instead???
+            IERC20(_token).balanceOf(address(this)) >= feeTokenAndAmount[_token] + _amount,
+            "Bridge: Not enough tokens to unlock!"
+        );
 
-            return true;
+        // This is the only way to withdraw locked tokens from the bridge contract
+        // (see `lock` method of this contract)
+        IERC20(_token).safeTransfer(sender, _amount);
 
-        } else {
+        emit UnlockWithPermit(_token, sender, _amount);
 
-            // Get the domain separator of the token
-            bytes32 domainSeparator = allowedTokens[_token];
-            // Verify the signature (contains v, r, s) using the domain separator
-            signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
+        return true;
 
-            // If the user locked tokens with the zero address then native tokens are minted 
-            // to the user after unlock
-            require(
-                address(this).balance >= feeTokenAndAmount[_token] + _amount,
-                "Bridge: Not enough tokens to unlock!"
-            );
-
-            (bool success, ) = sender.call{ value: _amount }("");
-
-            emit UnlockWithPermit(_token, sender, _amount);
-
-            return true;
-        }
     }
 
     /// @notice Sets the modified ERC20 token used in the bridge
@@ -314,65 +284,6 @@ contract Bridge is IBridge, AccessControl {
     /// @param _newAdmin Address of the admin   
     function setAdmin(address _newAdmin) external onlyAdmin {
         grantRole(DEFAULT_ADMIN_ROLE, _newAdmin);
-    }
-
-    /// @notice Sets domain separator for an allowed token
-    /// @param _token Address of the token used in the bridge (0 for native token of the chain)
-    /// @param name Name of the token used in the bridge (name of the native token of the chain)
-    function setAllowedToken(
-        address _token,
-        string memory _name
-    )
-    external
-    onlyAdmin
-    {
-        bytes32 domainSeparator;
-        if (_token != address(0)) {
-            // A custom ERC20 token
-            ERC20 token = ERC20(_token);
-            
-            domainSeparator = keccak256(
-                abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
-                    // Token name
-                    keccak256(bytes(token.name())),
-                    // Version
-                    keccak256(bytes("1")),
-                    // ChainID
-                    block.chainid,
-                    // Verifying contract
-                    address(this)
-                )
-            );
-        } else {
-            // A native token of the chain
-            require(bytes(_name).length != 0, "Bridge: Token name is empty!");
-            domainSeparator = keccak256(
-                abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
-                    // Token name
-                    keccak256(bytes(_name)),
-                    // Version
-                    keccak256(bytes("1")),
-                    // ChainID
-                    block.chainid,
-                    // Verifying contract
-                    address(this)
-                )
-            );
-        }
-        allowedTokens[_token] = domainSeparator;
-    }
-
-
-    /// @notice Forbids the token to be used in the bridge
-    /// @param _token Address of the token to forbid
-    function removeAllowedToken(address _token) external onlyAdmin {
-        allowedTokens[_token] = 0;
     }
 
     /// @notice Sets a new fee rate for bridge operations
@@ -435,13 +346,13 @@ contract Bridge is IBridge, AccessControl {
         uint8 v,
         bytes32 r,
         bytes32 s,
-        bytes32 _domainSeparator,
+        address _token,
         address _msgSender
     ) internal {
             require(!nonces[_nonce], "Bridge: request already processed!");
 
             bytes32 permitDigest = getPermitDigest(
-                _domainSeparator,
+                _token,
                 _msgSender,
                 _amount,
                 _nonce
@@ -457,20 +368,55 @@ contract Bridge is IBridge, AccessControl {
 
     /// @dev One of the nested functions for signature verification
     function getPermitDigest(
-        bytes32 _domainSeparator,
+        address _token,
         address _receiverAddress,
         uint256 _amount,
         uint256 _nonce
     ) internal pure returns (bytes32) {
-        return
-        keccak256(
+        bytes32 _domainSeparator = getDomainSeparator(_token, "1", block.chainId. address(this));
+        bytes32 _typeHash = getPermitTypeHash(_receiverAddress, _amount, _nonce);
+
+        bytes32 permitDigest = keccak256(
             abi.encodePacked(
                 uint16(0x1901),
                 _domainSeparator,
-                getPermitTypeHash(_receiverAddress, _amount, _nonce)
+                _typeHash
             )
         );
+
+        return permitDigest;
     }
+
+    /// @dev Calculates DOMAIN_SEPARATOR of the token
+    function getDomainSeparator(
+        address _token,
+        string _version,
+        uint256 _chainId, 
+        address _verifyingAddress
+    ) internal pure returns (bytes32) {
+        require(_token != address(0), "Bridge: invalid address of transfered token!");
+
+        WrappedERC20Template token = WrappedERC20Template(_token);
+        
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ),
+                // Token name
+                keccak256(bytes(token.name())),
+                // Version
+                keccak256(bytes(_version)),
+                // ChainID
+                _chainId,
+                // Verifying contract
+                _verifyingAddress
+            );
+        )
+
+        return domainSeparator;
+    }
+
 
     /// @dev One of the nested functions for signature verification
     function getPermitTypeHash(
@@ -478,8 +424,8 @@ contract Bridge is IBridge, AccessControl {
         uint256 _amount,
         uint256 _nonce
     ) internal pure returns (bytes32) {
-        return 
-        keccak256(
+
+        bytes32 permitHash = keccak256(
             abi.encode(
                 keccak256(
                     "Permit(address spender,uint256 value,uint256 nonce)"
@@ -489,6 +435,8 @@ contract Bridge is IBridge, AccessControl {
                 _nonce
             )
         );
+
+        return permitHash;
     }
 
 }
