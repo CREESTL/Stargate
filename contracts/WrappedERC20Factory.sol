@@ -39,7 +39,7 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
     /// @notice Checks if there is a wrapped token in the target chain for the original token 
     /// @param originalToken The address of the original token to check
     function checkTargetToken(address originalToken) public view returns (bool) {
-        (require originalToken != address(0), "Factory: original token can not have a zero address!");
+        require (originalToken != address(0), "Factory: original token can not have a zero address!");
         // If there is no value for `originalToken` key then address(0) will be returned from the map
         if (originalTargetTokens[originalToken] != address(0)) {
             return true;
@@ -55,18 +55,18 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
     /// @param decimals The number of decimals of the new token
     /// @return The address of a new token
     function createNewToken(
-        address memory originalToken,
+        address originalToken,
         string memory name,
         string memory symbol,
         uint8 decimals
     ) external onlyAdmin returns (address) {
         // This will create a new token on the same bridge the factory is deployed on (target chain)
-        WrappedERC20Template wrappedToken = new WrappedERC20Template();
+        WrappedERC20Template wrappedToken = new WrappedERC20Template(name, symbol, decimals);
         originalTargetTokens[originalToken] = address(wrappedToken);
 
         emit CreateNewToken(address(wrappedToken));
         
-        return tokenAddress;
+        return address(wrappedToken);
     }
     
     /// @notice Sets the address of the bridge of the tokens

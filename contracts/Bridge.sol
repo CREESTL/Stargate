@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./interfaces/IBridge.sol";
 import "./interfaces/IWrappedERC20Template.sol";
-import ".WrappedERC20Template.sol";
+import "./WrappedERC20Template.sol";
 
 import "hardhat/console.sol";
 
@@ -34,19 +34,6 @@ contract Bridge is IBridge, AccessControl {
     uint private constant MAX_BP = 1000;
     /// @dev Fee rate. Used to calculate final fee. May be changed. 0.3 - 3%
     uint public feeRate; 
-    /// @dev Monitor tokens that are to be unwrapped back into source chain
-    /// TODO it is never used!
-    struct TokenInfo {
-        /// @dev The name of the source chain
-        string originalChain; 
-        /// @dev The address of the token in the source chain
-        string originalTokenAddress;
-        /// @dev The address of the wrapped token in the target chain
-        address wrappedTokenAddress; 
-    }
-
-    TokenInfo[] public tokenInfos;
-
 
     /// @dev Checks if caller is a messenger bot
     modifier onlyMessengerBot {
@@ -73,25 +60,25 @@ contract Bridge is IBridge, AccessControl {
     }
 
     /// @notice Initializes internal variables, sets roles
-    /// @param wrappedToken The address of the modified ERC20 token
-    /// @param botMessenger The address of bot messenger
-    /// @param feeRate The fee rate in basis points
+    /// @param _wrappedToken The address of the modified ERC20 token
+    /// @param _botMessenger The address of bot messenger
+    /// @param _feeRate The fee rate in basis points
     constructor(
-        address wrappedToken,
-        address botMessenger,
-        uint feeRate
+        address _wrappedToken,
+        address _botMessenger,
+        uint _feeRate
     ) { 
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // The provided address gets a special role (used in signature verification)
         _setupRole(BOT_MESSENGER_ROLE, botMessenger);
-        botMessenger = botMessenger;
+        botMessenger = _botMessenger;
 
-        feeRate = feeRate;
+        feeRate = _feeRate;
 
         // Create a modified ERC20 token to be used across the bridge
-        if (wrappedToken != address(0)) {
-            wrappedToken = IWrappedERC20Template(wrappedToken);
+        if (_wrappedToken != address(0)) {
+            wrappedToken = IWrappedERC20Template(_wrappedToken);
         }
 
     }
@@ -155,7 +142,6 @@ contract Bridge is IBridge, AccessControl {
 
     /// @notice Burns tokens on a target chain
     /// @param token Address of the token to burn
-    /// @param to Address of the wallet in the source chain
     /// @param amount The amount of tokens to burn
     /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
@@ -211,8 +197,6 @@ contract Bridge is IBridge, AccessControl {
     returns(bool)
     {   
         address sender = msg.sender;
-        // Get the domain separator of the token
-        bytes32 domainSeparator = getDomainSeparator(token, "1", block.chainId, address(this)); 
 
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has locked tokens on the source chain
@@ -247,12 +231,9 @@ contract Bridge is IBridge, AccessControl {
     {
         address sender = msg.sender;
 
-        // Get the domain separator of the token
-        bytes32 domainSeparator = getDomainSeparator(token, "1", block.chainId, address(this)); 
-
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(nonce, amount, v, r, s, domainSeparator, sender);
+        signatureVerification(nonce, amount, v, r, s, token, sender);
 
         require(
             IWrappedERC20Template(token).balanceOf(address(this)) >= feeTokenAndAmount[token] + amount,
@@ -270,15 +251,15 @@ contract Bridge is IBridge, AccessControl {
     }
 
     /// @notice Sets the modified ERC20 token used in the bridge
-    /// @param wrappedToken Address of the token
+    /// @param newWrappedToken Address of the token
     function setBridgedStandardERC20(
-        address wrappedToken
+        address newWrappedToken
     )
     external
     onlyAdmin
-    notZeroAddress(wrappedToken)
+    notZeroAddress(newWrappedToken)
     {
-        wrappedToken = IWrappedERC20Template(wrappedToken);
+        wrappedToken = IWrappedERC20Template(newWrappedToken);
     }
 
     /// @notice Sets the admin
@@ -317,6 +298,7 @@ contract Bridge is IBridge, AccessControl {
         } else {
             // Or send native tokens
             (bool success, ) = msg.sender.call{ value: amount }("");
+            require(success, "Bridge: tokens withdrawal failed!");
         }
 
     }
@@ -339,7 +321,6 @@ contract Bridge is IBridge, AccessControl {
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @param domainSeparator The domain seperator of the token
     /// @param msgSender The address of account on another chain
     function signatureVerification(
         uint256 nonce,
@@ -373,8 +354,8 @@ contract Bridge is IBridge, AccessControl {
         address receiverAddress,
         uint256 amount,
         uint256 nonce
-    ) internal pure returns (bytes32) {
-        bytes32 domainSeparator = getDomainSeparator(token, "1", block.chainId. address(this));
+    ) internal view returns (bytes32) {
+        bytes32 domainSeparator = getDomainSeparator(token, "1", block.chainid, address(this));
         bytes32 typeHash = getPermitTypeHash(receiverAddress, amount, nonce);
 
         bytes32 permitDigest = keccak256(
@@ -390,30 +371,30 @@ contract Bridge is IBridge, AccessControl {
 
     /// @dev Calculates DOMAIN_SEPARATOR of the token
     function getDomainSeparator(
-        address token,
-        string version,
-        uint256 chainId, 
+        address _token,
+        string memory version,
+        uint256 chainid, 
         address verifyingAddress
-    ) internal pure returns (bytes32) {
-        require(token != address(0), "Bridge: invalid address of transfered token!");
+    ) internal view returns (bytes32) {
+        require(_token != address(0), "Bridge: invalid address of transfered token!");
 
-        WrappedERC20Template token = WrappedERC20Template(token);
+        WrappedERC20Template token = WrappedERC20Template(_token);
         
         bytes32 domainSeparator = keccak256(
             abi.encode(
                 keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    "EIP712Domain(string name,string version,uint256 chainid,address verifyingContract)"
                 ),
                 // Token name
                 keccak256(bytes(token.name())),
                 // Version
                 keccak256(bytes(version)),
                 // ChainID
-                chainId,
+                chainid,
                 // Verifying contract
                 verifyingAddress
-            );
-        )
+            )
+        );
 
         return domainSeparator;
     }
