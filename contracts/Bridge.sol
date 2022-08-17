@@ -18,8 +18,6 @@ contract Bridge is IBridge, AccessControl {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWrappedERC20;
 
-    IWrappedERC20 public wrappedToken;
-
     ///@dev Names of supported chains
     mapping(string => bool) public supportedChains;
     ///@dev Monitor fees
@@ -60,11 +58,9 @@ contract Bridge is IBridge, AccessControl {
     }
 
     /// @notice Initializes internal variables, sets roles
-    /// @param _wrappedToken The address of the modified ERC20 token
     /// @param _botMessenger The address of bot messenger
     /// @param _feeRate The fee rate in basis points
     constructor(
-        address _wrappedToken,
         address _botMessenger,
         uint _feeRate
     ) { 
@@ -75,11 +71,6 @@ contract Bridge is IBridge, AccessControl {
         botMessenger = _botMessenger;
 
         feeRate = _feeRate;
-
-        // Create a modified ERC20 token to be used across the bridge
-        if (_wrappedToken != address(0)) {
-            wrappedToken = IWrappedERC20(_wrappedToken);
-        }
 
     }
 
@@ -248,18 +239,6 @@ contract Bridge is IBridge, AccessControl {
 
         return true;
 
-    }
-
-    /// @notice Sets the modified ERC20 token used in the bridge
-    /// @param newWrappedToken Address of the token
-    function setBridgedStandardERC20(
-        address newWrappedToken
-    )
-    external
-    onlyAdmin
-    notZeroAddress(newWrappedToken)
-    {
-        wrappedToken = IWrappedERC20(newWrappedToken);
     }
 
     /// @notice Sets the admin
