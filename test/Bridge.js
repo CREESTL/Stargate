@@ -23,12 +23,12 @@ describe('Bridge', () => {
         // provider = ethers.getDefaultProvider();
         [owner, client, fee] = await ethers.getSigners();
         const WrappedERC20Template = await ethers.getContractFactory("WrappedERC20Template");
-        const FactoryWrappedERC20Template = await ethers.getContractFactory("FactoryWrappedERC20Template");
+        const WrappedERC20Template = await ethers.getContractFactory("WrappedERC20Template");
         const Bridge = await ethers.getContractFactory("Bridge");
 
         tokenStandart = await WrappedERC20Template.deploy();
         bridge = await Bridge.deploy(tokenStandart.address, bot_messenger.address, 3);
-        factoryToken = await FactoryWrappedERC20Template.deploy(tokenStandart.address, bridge.address);
+        factoryToken = await WrappedERC20Template.deploy(tokenStandart.address, bridge.address);
         // loadFixture = createFixtureLoader(
         //     await ethers.getSigners(),
         //     provider
@@ -187,9 +187,9 @@ describe('Bridge', () => {
     describe("Bridge other functions", function () {
         it('setBridgedStandardERC20 function', async() => {
             const WrappedERC20TemplateOther = await ethers.getContractFactory("WrappedERC20Template");
-            const FactoryWrappedERC20TemplateOther = await ethers.getContractFactory("FactoryWrappedERC20Template");
+            const WrappedERC20TemplateOther = await ethers.getContractFactory("WrappedERC20Template");
             tokenStandart2 = await WrappedERC20TemplateOther.deploy();
-            factoryToken2 = await FactoryWrappedERC20TemplateOther.deploy(tokenStandart2.address, bridge.address);
+            factoryToken2 = await WrappedERC20TemplateOther.deploy(tokenStandart2.address, bridge.address);
 
             expect(await bridge.bridgeStandardERC20()).to.be.equal(tokenStandart.address);
             await bridge.setBridgedStandardERC20(tokenStandart2.address);

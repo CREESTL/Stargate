@@ -9,11 +9,11 @@ describe('FactoryAndToken', () => {
   beforeEach( async () => {
     [owner, client] = await ethers.getSigners();
     const WrappedERC20Template = await ethers.getContractFactory("WrappedERC20Template");
-    const FactoryWrappedERC20Template = await ethers.getContractFactory("FactoryWrappedERC20Template");
+    const WrappedERC20Template = await ethers.getContractFactory("WrappedERC20Template");
     const BridgeMock = await ethers.getContractFactory("BridgeMock");
     bridgeMock = await BridgeMock.deploy();
     tokenStandart = await WrappedERC20Template.deploy();
-    factoryToken = await FactoryWrappedERC20Template.deploy(tokenStandart.address, bridgeMock.address);
+    factoryToken = await WrappedERC20Template.deploy(tokenStandart.address, bridgeMock.address);
   });
   describe("Creating a new token through the factory", function () {
 

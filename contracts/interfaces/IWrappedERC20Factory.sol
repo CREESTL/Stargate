@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 
 /// @title An inteerface of a factory of custom ERC20 tokens used in the bridge
-interface IFactoryWrappedERC20Template {
+interface IWrappedERC20Factory {
 
     /// @notice Creates a new token to be used in the bridge
     /// @param _name The name of the new token

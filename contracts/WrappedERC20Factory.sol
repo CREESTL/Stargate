@@ -5,12 +5,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-import "./interfaces/IFactoryWrappedERC20Template.sol";
+import "./interfaces/IWrappedERC20Factory.sol";
 import "./interfaces/IWrappedERC20Template.sol";
 
 
 /// @title A factory of custom ERC20 tokens used in the bridge
-contract FactoryWrappedERC20Template is IFactoryWrappedERC20Template, AccessControl {
+contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
 
     /// @dev Allows to call `clone()` method on address
     using Clones for address;
