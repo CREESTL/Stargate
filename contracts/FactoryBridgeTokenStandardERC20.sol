@@ -51,6 +51,7 @@ contract FactoryBridgeTokenStandardERC20 is IFactoryBridgeTokenStandardERC20, Ac
     }
 
     //TODO: prevent repeated token creation!
+    //TODO: no tokens are created here! it just configures the old one, must call `new`
     /// @notice Creates a new token to be used in the bridge
     /// @param _name The name of the new token
     /// @param _symbol The symbol of the new token

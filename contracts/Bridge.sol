@@ -90,6 +90,7 @@ contract Bridge is IBridge, AccessControl {
     ) { 
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        // The provided address gets a special role (used in signature verification)
         _setupRole(BOT_MESSENGER_ROLE, _botMessenger);
         botMessenger = _botMessenger;
 
@@ -107,19 +108,19 @@ contract Bridge is IBridge, AccessControl {
     /// @param token Address of the token to lock
     /// @param to Address of the wallet on the target chain
     /// @param amount The amount of tokens to lock
-    /// @param direction The name of the target chain
+    /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lock(
         address _token,
-        string memory _to,
+        string memory _receiverAddress,
         uint256 _amount,
-        string memory _direction
+        string memory _targetChain
     )
     external
     payable
     override
     tokenIsAllowed(_token)
-    isSupportedChain(_direction)
+    isSupportedChain(_targetChain)
     returns(bool)
     {
         address sender = _msgSender();
@@ -141,7 +142,7 @@ contract Bridge is IBridge, AccessControl {
             IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount + feeAmount);
 
             // Emit the lock event with detailed information
-            emit Lock(_token, sender, _to, _amount, _direction);
+            emit Lock(_token, sender, _receiverAddress, _amount, _targetChain);
 
             return true;
 
@@ -155,7 +156,7 @@ contract Bridge is IBridge, AccessControl {
             feeTokenAndAmount[_token] += feeAmount;
 
             // The lock event is still emitted
-            emit Lock(_token, sender, _to, msg.value - feeAmount, _direction);
+            emit Lock(_token, sender, _receiverAddress, msg.value - feeAmount, _targetChain);
 
             return true;
         }
@@ -166,19 +167,19 @@ contract Bridge is IBridge, AccessControl {
     /// @param token Address of the token to burn
     /// @param to Address of the wallet in the source chain
     /// @param amount The amount of tokens to burn
-    /// @param direction The name of the target chain
+    /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
     function burn(
         address _token,
-        string memory _to,
+        string memory _receiverAddress,
         uint256 _amount,
-        string memory _direction
+        string memory _targetChain
     )
     external
     override
     notZeroAddress(_token)
     tokenIsAllowed(_token)
-    isSupportedChain(_direction)
+    isSupportedChain(_targetChain)
     returns(bool)
     {
         address sender = _msgSender();
@@ -458,7 +459,7 @@ contract Bridge is IBridge, AccessControl {
     /// @dev One of the nested functions for signature verification
     function getPermitDigest(
         bytes32 _domainSeparator,
-        address _to,
+        address _receiverAddress,
         uint256 _amount,
         uint256 _nonce
     ) internal pure returns (bytes32) {
@@ -467,7 +468,7 @@ contract Bridge is IBridge, AccessControl {
             abi.encodePacked(
                 uint16(0x1901),
                 _domainSeparator,
-                getPermitTypeHash(_to, _amount, _nonce)
+                getPermitTypeHash(_receiverAddress, _amount, _nonce)
             )
         );
     }

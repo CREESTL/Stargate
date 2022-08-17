@@ -20,29 +20,29 @@ interface IBridge {
     // TODO finish
     /// @notice Locks token on the source chain
     /// @param token Address of the token to lock
-    /// @param to Address of the wallet in the target chain
+    /// @param _receiverAddress Address of the wallet in the target chain
     /// @param amount The amount of tokens to lock
-    /// @param direction The name of the target chain
+    /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lock(
         address _token,
-        string memory _to,
+        string memory _receiverAddress,
         uint256 _amount,
-        string memory _direction
+        string memory _targetChain
     ) external payable returns(bool);
 
     // TODO finish
     /// @notice Burns tokens on a target chain
     /// @param token Address of the token to burn
-    /// @param to Address of the wallet in the source chain
+    /// @param _receiverAddress Address of the wallet in the source chain
     /// @param amount The amount of tokens to burn
-    /// @param direction The name of the target chain
+    /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
     function burn(
         address _token,
-        string memory _to,
+        string memory _receiverAddress,
         uint256 _amount,
-        string memory _direction
+        string memory _targetChain
     ) external returns(bool);
 
     /// @notice Mints tokens if the user is permitted to mint
@@ -79,53 +79,51 @@ interface IBridge {
         bytes32 s
     ) external returns(bool);
 
-    // TODO delete it???
     // @notice Indicates that some tokens were locked in the source chain
     /// @param _token Address of the token to lock
     /// @param _sender The sender of the locking transaction
-    /// @param _to Address of the wallet in the target chain
+    /// @param _receiverAddress Address of the wallet in the target chain
     /// @param _amount The amount of tokens to lock
-    /// @param _direction The name of the target chain
+    /// @param _targetChain The name of the target chain
     event Lock(
         address indexed _token,
         address indexed _sender,
-        string _to,
+        string _receiverAddress,
         uint _amount,
-        string _direction
+        string _targetChain
     );
 
-    // TODO delete it???
     /// @notice Indicates that some tokens were burnt in the target chain
     /// @param _token Address of the token to burn
     /// @param _sender The sender of the burning transaction
-    /// @param _to Address of the wallet in the source chain
+    /// @param _receiverAddress Address of the wallet in the source chain
     /// @param _amount The amount of tokens to burn
-    /// @param _direction The name of the source chain
+    /// @param _targetChain The name of the source chain
     event Burn(
         address indexed _token,
         address indexed _sender,
-        string _to,
+        string _receiverAddress,
         uint _amount,
-        string _direction
+        string _targetChain
     );
 
     /// @notice Indicates that some tokens were minted by permitted user
     /// @param _token Address of the token to mint
-    /// @param _to Address of the wallet in the target chain
+    /// @param _receiverAddress Address of the wallet in the target chain
     /// @param _amount The amount of tokens to mint
     event MintWithPermit(
         address indexed _token,
-        address indexed _to,
+        address indexed _receiverAddress,
         uint _amount
     );
 
     /// @notice Indicates that some tokens were unlocked by permitted user
     /// @param _token Address of the token to unlock
-    /// @param _to Address of the wallet in the source chain
+    /// @param _receiverAddress Address of the wallet in the source chain
     /// @param _amount The amount of tokens to unlock
     event UnlockWithPermit(
         address indexed _token,
-        address indexed _to,
+        address indexed _receiverAddress,
         uint _amount
     );
 
