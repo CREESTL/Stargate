@@ -9,6 +9,7 @@
     "@nomiclabs/hardhat-ethers": "^2.1.0",
     "@openzeppelin/contracts": "^4.7.2",
     "chai": "^4.3.6",
+    "delay": "^5.0.0",
     "dotenv": "^16.0.1",
     "ethers": "^5.6.9",
     "hardhat-gas-reporter": "^1.0.8",
