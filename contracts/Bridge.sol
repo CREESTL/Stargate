@@ -45,12 +45,6 @@ contract Bridge is IBridge, AccessControl {
         _;
     }
 
-    /// @dev Checks if address is not a zero address
-    modifier notZeroAddress(address _address) {
-        require(_address != address(0), "Bridge: the address is a zero address!");
-        _;
-    }
-
     /// @dev Checks the contracts is supported on the given chain
     modifier isSupportedChain(string memory chain) {
         require(supportedChains[chain], "Bridge: the chain is not supported!");
@@ -76,9 +70,9 @@ contract Bridge is IBridge, AccessControl {
 
 
     /// @notice Locks tokens on the source chain
-    /// @param token Address of the token to lock
+    /// @param token Address of the token to lock (zero address for native tokens)
     /// @param amount The amount of tokens to lock
-    /// @param receiver The receiver of wrapped tokens
+    /// @param receiver The receiver of wrapped tokens on the target chain
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lock(
@@ -88,6 +82,8 @@ contract Bridge is IBridge, AccessControl {
         string memory targetChain
     )
     external
+    // If a user wants to lock native tokens - he should provide `amount+fee` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
     payable
     override
     isSupportedChain(targetChain)
@@ -95,12 +91,13 @@ contract Bridge is IBridge, AccessControl {
     {
         address sender = msg.sender;
 
-        if (token != address(0)){
-            // Calculate the fee and save it
-            uint256 feeAmount = calcFee(amount);
-            feesForToken[token] += feeAmount;
+        // Calculate the fee and save it
+        uint256 feeAmount = calcFee(amount);
+        feesForToken[token] += feeAmount;
 
-            
+        // Custom tokens
+        if (token != address(0)){
+     
             // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the frontend 
             // before transfering the tokens
 
@@ -117,29 +114,26 @@ contract Bridge is IBridge, AccessControl {
 
             return true;
 
+        // Native tokens
         } else {
 
+            // User provides some native tokens to the bridge when calling this `lock` method so no
+            // need to transfer any tokens here once more
+            // Make sure that he sent enought tokens to cover both amount and fee
+            require(msg.value >= amount + feeAmount, "Bridge: not enough tokens to cover the fee!");
 
-            // TODO need this branch???
-            // If the user tried to lock the zero address, then only fees are payed
-            require(msg.value != 0, "Bridge: no tokens were sent with transaction!");
-
-            // No tokens are transfered in this case
-            uint256 feeAmount = calcFee(msg.value);
-            feesForToken[token] += feeAmount;
-
-            // The lock event is still emitted
-            emit Lock(token, sender, receiver, msg.value - feeAmount, targetChain);
+            emit Lock(token, sender, receiver, amount, targetChain);
 
             return true;
         }
+
     }
 
 
     /// @notice Burns tokens on a target chain
-    /// @param token Address of the token to burn
+    /// @param token Address of the token to burn (zero address for native tokens)
     /// @param amount The amount of tokens to burn
-    /// @param receiver The receiver of unlocked tokens
+    /// @param receiver The receiver of unlocked tokens on the original chain
     /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
     function burn(
@@ -150,11 +144,18 @@ contract Bridge is IBridge, AccessControl {
     )
     external
     override
-    notZeroAddress(token)
     isSupportedChain(targetChain)
     returns(bool)
-    {
+    {   
+        // Only WrappedERC20 tokens can be burned, because only WrappedERC20 are minted on target chain
+        // Example between Ethereum and Polygon:
+        // Lock: ETH (Ethereum) -> wETH(Polygon)
+        // Burn:
+        //     correct: wETH(Polygon) -> ETH(Ethereum)
+        //     incorrect: MATIC(Polygon) -> ETH(Ethereum)
+
         address sender = msg.sender;
+
         // Calculate the fee and save it
         uint256 feeAmount = calcFee(amount);
         feesForToken[token] += feeAmount;
@@ -162,8 +163,10 @@ contract Bridge is IBridge, AccessControl {
         // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the frontend 
         // before transfering the tokens
 
-        // Transfer user's tokens (and a fee) to the bridge contract and burn them immediately
+        // Transfer user's tokens (and a fee) to the bridge contract from target chain account
+        // NOTE This method should be called from the address on the target chain
         IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
+        // And burn them immediately
         // Burn all tokens except the fee
         IWrappedERC20(token).burn(address(this), amount);
 
@@ -173,7 +176,7 @@ contract Bridge is IBridge, AccessControl {
     }
 
 
-    /// @notice Mints tokens if the user is permitted to mint
+    /// @notice Mints target tokens if the user is permitted to do so
     /// @param token Address of the token to mint
     /// @param amount The amount of tokens to mint
     /// @param nonce Prevent replay attacks
@@ -191,15 +194,17 @@ contract Bridge is IBridge, AccessControl {
     )
     external
     override
-    notZeroAddress(token)
     returns(bool)
     {   
+        // Only WrappedERC20 tokens can be minted on the target chain. 
+        // Native tokens of target chain can not be an equivalent of any tokens of the original chain
         address sender = msg.sender;
 
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has locked tokens on the source chain
         signatureVerification(nonce, amount, v, r, s, token, sender);
-        // Mint wrapped tokens on the other chain 
+        // Mint wrapped tokens to the user's address on the target chain
+        // NOTE This method should be called from the address on the target chain 
         IWrappedERC20(token).mint(sender, amount);
 
         emit MintWithPermit(token, sender, amount);
@@ -208,7 +213,7 @@ contract Bridge is IBridge, AccessControl {
     }
 
     /// @notice Unlocks tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
+    /// @param token Address of the token to unlock (zero address for native tokens)
     /// @param amount The amount of tokens to unlock
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -227,26 +232,48 @@ contract Bridge is IBridge, AccessControl {
     override
     returns(bool)
     {
-        require(
-            IWrappedERC20(token).balanceOf(address(this)) >= feesForToken[token] + amount,
-            "Bridge: Not enough tokens to unlock!"
-        );
-
         address sender = msg.sender;
 
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(nonce, amount, v, r, s, token, sender);
+        // Custom tokens
+        if (token != address(0)){
+            // Check if there is enough custom tokens on the bridge (no fees)
+            require(
+                IWrappedERC20(token).balanceOf(address(this)) >= amount,
+                "Bridge: not enough ERC20 tokens on the bridge balance!"
+            );
 
 
-        // This is the only way to withdraw locked tokens from the bridge contract
-        // (see `lock` method of this contract)
-        IWrappedERC20(token).safeTransfer(sender, amount);
+            // Verify the signature (contains v, r, s) using the domain separator
+            // This will prove that the user has burnt tokens on the target chain
+            signatureVerification(nonce, amount, v, r, s, token, sender);
 
-        emit UnlockWithPermit(token, sender, amount);
+            // This is the only way to withdraw locked tokens from the bridge contract
+            // (see `lock` method of this contract)
+            IWrappedERC20(token).safeTransfer(sender, amount);
 
-        return true;
+            emit UnlockWithPermit(token, sender, amount);
 
+            return true;
+
+        // Native tokens
+        } else {
+
+            // Check if there is enough native tokens on the bridge (no fees)
+            require(
+                address(this).balance >= amount,
+                "Bridge: not enough native tokens on the bridge balance!"
+            );
+
+            // Transfer native tokens of the original chain from the bridge to the caller
+            (bool success, ) = sender.call{ value: amount }("");
+            require(success, "Bridge: tokens unlock failed!");
+
+            emit UnlockWithPermit(token, sender, amount);
+
+            return true;
+
+        }    
+        
     }
 
     /// @notice Sets the admin
@@ -265,13 +292,13 @@ contract Bridge is IBridge, AccessControl {
     /// @notice Calculates a fee for bridge operations
     /// @param amount An amount of tokens that were sent. The more tokens - the higher the fee
     /// @return The fee amount
-    function calcFee(uint256 amount) private view returns(uint256) {
+    function calcFee(uint256 amount) public view onlyAdmin returns(uint256) {
         return amount * feeRate / MAX_BP;
     }
 
 
     /// @notice Withdraws fees accumulated from a specific token operations
-    /// @param token The address of the token that was used in the operations 
+    /// @param token The address of the token (zero address for native token)
     /// @param amount The amount of fees from a single token to be withdrawn
     function withdraw(address token, uint256 amount) external onlyAdmin {
         require(feesForToken[token] != 0, "Bridge: no fees were collected for this token!");
@@ -279,11 +306,11 @@ contract Bridge is IBridge, AccessControl {
         
         feesForToken[token] -= amount;
         
+        // Custom token
         if (token != address(0)) {
-            // Send custom ERC20 tokens
             IWrappedERC20(token).safeTransfer(msg.sender, amount);
+        // Native token
         } else {
-            // Or send native tokens
             (bool success, ) = msg.sender.call{ value: amount }("");
             require(success, "Bridge: tokens withdrawal failed!");
         }
