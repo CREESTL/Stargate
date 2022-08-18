@@ -21,7 +21,7 @@ contract Bridge is IBridge, AccessControl {
     ///@dev Names of supported chains
     mapping(string => bool) public supportedChains;
     ///@dev Monitor fees
-    mapping(address => uint) public feeTokenAndAmount;
+    mapping(address => uint256) public feesForToken;
     ///@dev Monitor nonces. Prevent replay attacks
     mapping(uint256 => bool) public nonces;
 
@@ -29,9 +29,9 @@ contract Bridge is IBridge, AccessControl {
     address public botMessenger;
 
     /// @dev Maximum amount of basis points. Used to calculate final fee.
-    uint private constant MAX_BP = 1000;
+    uint256 private constant MAX_BP = 1000;
     /// @dev Fee rate. Used to calculate final fee. May be changed. 0.3 - 3%
-    uint public feeRate; 
+    uint256 public feeRate; 
 
     /// @dev Checks if caller is a messenger bot
     modifier onlyMessengerBot {
@@ -62,7 +62,7 @@ contract Bridge is IBridge, AccessControl {
     /// @param _feeRate The fee rate in basis points
     constructor(
         address _botMessenger,
-        uint _feeRate
+        uint256 _feeRate
     ) { 
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -78,11 +78,13 @@ contract Bridge is IBridge, AccessControl {
     /// @notice Locks tokens on the source chain
     /// @param token Address of the token to lock
     /// @param amount The amount of tokens to lock
+    /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lock(
         address token,
         uint256 amount,
+        address receiver,
         string memory targetChain
     )
     external
@@ -95,8 +97,8 @@ contract Bridge is IBridge, AccessControl {
 
         if (token != address(0)){
             // Calculate the fee and save it
-            uint feeAmount = calcFee(amount);
-            feeTokenAndAmount[token] += feeAmount;
+            uint256 feeAmount = calcFee(amount);
+            feesForToken[token] += feeAmount;
 
             // NOTE ERC20.approve(sender, address(this), amount + feeAmount) must be called on the frontend 
             // before transfering the tokens
@@ -110,21 +112,23 @@ contract Bridge is IBridge, AccessControl {
             IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
 
             // Emit the lock event with detailed information
-            emit Lock(token, sender, amount, targetChain);
+            emit Lock(token, sender, receiver, amount, targetChain);
 
             return true;
 
         } else {
 
+
+            // TODO need this branch???
             // If the user tried to lock the zero address, then only fees are payed
             require(msg.value != 0, "Bridge: no tokens were sent with transaction!");
 
             // No tokens are transfered in this case
-            uint feeAmount = calcFee(msg.value);
-            feeTokenAndAmount[token] += feeAmount;
+            uint256 feeAmount = calcFee(msg.value);
+            feesForToken[token] += feeAmount;
 
             // The lock event is still emitted
-            emit Lock(token, sender, msg.value - feeAmount, targetChain);
+            emit Lock(token, sender, receiver, msg.value - feeAmount, targetChain);
 
             return true;
         }
@@ -134,11 +138,13 @@ contract Bridge is IBridge, AccessControl {
     /// @notice Burns tokens on a target chain
     /// @param token Address of the token to burn
     /// @param amount The amount of tokens to burn
+    /// @param receiver The receiver of unlocked tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
     function burn(
         address token,
         uint256 amount,
+        address receiver,
         string memory targetChain
     )
     external
@@ -149,8 +155,8 @@ contract Bridge is IBridge, AccessControl {
     {
         address sender = msg.sender;
         // Calculate the fee and save it
-        uint feeAmount = calcFee(amount);
-        feeTokenAndAmount[token] += feeAmount;
+        uint256 feeAmount = calcFee(amount);
+        feesForToken[token] += feeAmount;
 
         // NOTE ERC20.approve(sender, address(this), amount + feeAmount) must be called on the frontend 
         // before transfering the tokens
@@ -160,7 +166,7 @@ contract Bridge is IBridge, AccessControl {
         // Burn all tokens except the fee
         IWrappedERC20(token).burn(address(this), amount);
 
-        emit Burn(token, sender, amount, targetChain);
+        emit Burn(token, sender, receiver, amount, targetChain);
 
         return true;
     }
@@ -220,16 +226,17 @@ contract Bridge is IBridge, AccessControl {
     override
     returns(bool)
     {
+        require(
+            IWrappedERC20(token).balanceOf(address(this)) >= feesForToken[token] + amount,
+            "Bridge: Not enough tokens to unlock!"
+        );
+
         address sender = msg.sender;
 
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
         signatureVerification(nonce, amount, v, r, s, token, sender);
 
-        require(
-            IWrappedERC20(token).balanceOf(address(this)) >= feeTokenAndAmount[token] + amount,
-            "Bridge: Not enough tokens to unlock!"
-        );
 
         // This is the only way to withdraw locked tokens from the bridge contract
         // (see `lock` method of this contract)
@@ -249,7 +256,7 @@ contract Bridge is IBridge, AccessControl {
 
     /// @notice Sets a new fee rate for bridge operations
     /// @param newFeeRate A new rate in basis points
-    function setFeeRate(uint newFeeRate) external onlyAdmin {
+    function setFeeRate(uint256 newFeeRate) external onlyAdmin {
         require(newFeeRate > 0 && newFeeRate <= MAX_BP, "Bridge: fee rate is too high!");
         feeRate = newFeeRate;
     }
@@ -257,7 +264,7 @@ contract Bridge is IBridge, AccessControl {
     /// @notice Calculates a fee for bridge operations
     /// @param amount An amount of tokens that were sent. The more tokens - the higher the fee
     /// @return The fee amount
-    function calcFee(uint amount) private view returns(uint) {
+    function calcFee(uint256 amount) private view returns(uint256) {
         return amount * feeRate / MAX_BP;
     }
 
@@ -265,11 +272,11 @@ contract Bridge is IBridge, AccessControl {
     /// @notice Withdraws fees accumulated from a specific token operations
     /// @param token The address of the token that was used in the operations 
     /// @param amount The amount of fees from a single token to be withdrawn
-    function withdraw(address token, uint amount) external onlyAdmin {
-        require(feeTokenAndAmount[token] != 0, "Bridge: no fees were collected for this token!");
-        require(feeTokenAndAmount[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
+    function withdraw(address token, uint256 amount) external onlyAdmin {
+        require(feesForToken[token] != 0, "Bridge: no fees were collected for this token!");
+        require(feesForToken[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
         
-        feeTokenAndAmount[token] -= amount;
+        feesForToken[token] -= amount;
         
         if (token != address(0)) {
             // Send custom ERC20 tokens
@@ -330,12 +337,12 @@ contract Bridge is IBridge, AccessControl {
     /// @dev One of the nested functions for signature verification
     function getPermitDigest(
         address token,
-        address receiverAddress,
+        address receiver,
         uint256 amount,
         uint256 nonce
     ) internal view returns (bytes32) {
         bytes32 domainSeparator = getDomainSeparator(token, "1", block.chainid, address(this));
-        bytes32 typeHash = getPermitTypeHash(receiverAddress, amount, nonce);
+        bytes32 typeHash = getPermitTypeHash(receiver, amount, nonce);
 
         bytes32 permitDigest = keccak256(
             abi.encodePacked(

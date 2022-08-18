@@ -20,22 +20,26 @@ interface IBridge {
     /// @notice Locks token on the source chain
     /// @param token Address of the token to lock
     /// @param amount The amount of tokens to lock
+    /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lock(
         address token,
         uint256 amount,
+        address receiver,
         string memory targetChain
     ) external payable returns(bool);
 
     /// @notice Burns tokens on a target chain
     /// @param token Address of the token to burn
     /// @param amount The amount of tokens to burn
+    /// @param receiver The receiver of unlocked tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
     function burn(
         address token,
         uint256 amount,
+        address receiver,
         string memory targetChain
     ) external returns(bool);
 
@@ -73,14 +77,16 @@ interface IBridge {
         bytes32 s
     ) external returns(bool);
 
-    // @notice Indicates that some tokens were locked in the source chain
+    /// @notice Indicates that some tokens were locked in the source chain
     /// @param token Address of the token to lock
     /// @param sender The sender of the locking transaction
+    /// @param receiver The receiver of wrapped tokens
     /// @param amount The amount of tokens to lock
     /// @param targetChain The name of the target chain
     event Lock(
         address indexed token,
         address indexed sender,
+        address indexed receiver,
         uint256 amount,
         string targetChain
     );
@@ -88,32 +94,34 @@ interface IBridge {
     /// @notice Indicates that some tokens were burnt in the target chain
     /// @param token Address of the token to burn
     /// @param sender The sender of the burning transaction
+    /// @param receiver The receiver of unlocked tokens
     /// @param amount The amount of tokens to burn
     /// @param targetChain The name of the source chain
     event Burn(
         address indexed token,
         address indexed sender,
+        address indexed receiver,
         uint256 amount,
         string targetChain
     );
 
     /// @notice Indicates that some tokens were minted by permitted user
     /// @param token Address of the token to mint
-    /// @param receiverAddress Address of the wallet in the target chain
+    /// @param receiver Address of the wallet in the target chain
     /// @param amount The amount of tokens to mint
     event MintWithPermit(
         address indexed token,
-        address indexed receiverAddress,
+        address indexed receiver,
         uint256 amount
     );
 
     /// @notice Indicates that some tokens were unlocked by permitted user
     /// @param token Address of the token to unlock
-    /// @param receiverAddress Address of the wallet in the source chain
+    /// @param receiver Address of the wallet in the source chain
     /// @param amount The amount of tokens to unlock
     event UnlockWithPermit(
         address indexed token,
-        address indexed receiverAddress,
+        address indexed receiver,
         uint256 amount
     );
 
