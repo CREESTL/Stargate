@@ -12,10 +12,15 @@ contract WrappedERC20 is IWrappedERC20, ERC20 {
     address private _bridge;
     uint8 private _decimals;
 
-    /// @dev Creates a token with an upgraded functionality of ERC20 token  
-    constructor(string memory name, string memory symbol, uint8 decimals_) 
+    /// @dev Creates a token with an upgraded functionality of ERC20 token 
+    /// @param name The name of the token
+    /// @param symbol The symbol of the token
+    /// @param decimals Number of decimals of the token
+    /// @param bridge The address of the bridge of the tokens 
+    constructor(string memory name, string memory symbol, uint8 decimals_, address bridge_) 
         ERC20(name, symbol) {
             _decimals = decimals_;
+            _bridge = bridge_;
         }
 
     /// @dev Checks if the caller is the bridge contract
