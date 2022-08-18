@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./interfaces/IBridge.sol";
 import "./interfaces/IWrappedERC20.sol";
@@ -13,7 +14,7 @@ import "./WrappedERC20.sol";
 import "hardhat/console.sol";
 
 /// @title A ERC20-ERC20 bridge contract
-contract Bridge is IBridge, AccessControl {
+contract Bridge is IBridge, AccessControl, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
     using SafeERC20 for IWrappedERC20;
@@ -87,6 +88,7 @@ contract Bridge is IBridge, AccessControl {
     payable
     override
     isSupportedChain(targetChain)
+    nonReentrant
     returns(bool)
     {
         address sender = msg.sender;
@@ -145,6 +147,7 @@ contract Bridge is IBridge, AccessControl {
     external
     override
     isSupportedChain(targetChain)
+    nonReentrant
     returns(bool)
     {   
         // Only WrappedERC20 tokens can be burned, because only WrappedERC20 are minted on target chain
@@ -194,6 +197,7 @@ contract Bridge is IBridge, AccessControl {
     )
     external
     override
+    nonReentrant
     returns(bool)
     {   
         // Only WrappedERC20 tokens can be minted on the target chain. 
@@ -230,6 +234,7 @@ contract Bridge is IBridge, AccessControl {
     )
     external
     override
+    nonReentrant
     returns(bool)
     {
         address sender = msg.sender;
@@ -300,7 +305,7 @@ contract Bridge is IBridge, AccessControl {
     /// @notice Withdraws fees accumulated from a specific token operations
     /// @param token The address of the token (zero address for native token)
     /// @param amount The amount of fees from a single token to be withdrawn
-    function withdraw(address token, uint256 amount) external onlyAdmin {
+    function withdraw(address token, uint256 amount) external nonReentrant onlyAdmin {
         require(feesForToken[token] != 0, "Bridge: no fees were collected for this token!");
         require(feesForToken[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
         
