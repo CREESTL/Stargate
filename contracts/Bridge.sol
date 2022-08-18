@@ -100,7 +100,8 @@ contract Bridge is IBridge, AccessControl {
             uint256 feeAmount = calcFee(amount);
             feesForToken[token] += feeAmount;
 
-            // NOTE ERC20.approve(sender, address(this), amount + feeAmount) must be called on the frontend 
+            
+            // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the frontend 
             // before transfering the tokens
 
             // After this transfer all tokens are in possesion of the bridge contract and they can not be
@@ -158,7 +159,7 @@ contract Bridge is IBridge, AccessControl {
         uint256 feeAmount = calcFee(amount);
         feesForToken[token] += feeAmount;
 
-        // NOTE ERC20.approve(sender, address(this), amount + feeAmount) must be called on the frontend 
+        // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the frontend 
         // before transfering the tokens
 
         // Transfer user's tokens (and a fee) to the bridge contract and burn them immediately
