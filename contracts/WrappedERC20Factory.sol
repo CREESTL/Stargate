@@ -12,10 +12,9 @@ import "./WrappedERC20.sol";
 /// @title A factory of custom ERC20 tokens used in the bridge
 contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
 
-    /// @dev The address of the bridge contract
-    address public bridge;
 
     /// @dev Map of addresses of tokens in the original and target chains
+    // TODO add original chain names here (struct)
     mapping(address => address) internal originalTargetTokens;
 
     /// @dev Role required to call functions of the factory
@@ -27,18 +26,15 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
         _;
     }
 
-    /// @notice Sets the default bridge of the tokens
-    /// @param _bridge Address of the briage of the tokens
-    constructor(address _bridge) {
+    /// @notice Gives caller admin rights
+    constructor() {
         // Caller gets admin rights
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        require(_bridge != address(0), "Factory: bridge can not have a zero address!");
-        bridge = _bridge;
     }
 
     /// @notice Checks if there is a wrapped token in the target chain for the original token 
     /// @param originalToken The address of the original token to check
-    function checkTargetToken(address originalToken) public view returns (bool) {
+    function checkTargetToken(address originalToken) public view onlyAdmin returns (bool){
         require (originalToken != address(0), "Factory: original token can not have a zero address!");
         // If there is no value for `originalToken` key then address(0) will be returned from the map
         if (originalTargetTokens[originalToken] != address(0)) {
@@ -53,26 +49,21 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
     /// @param name The name of the new token
     /// @param symbol The symbol of the new token
     /// @param decimals The number of decimals of the new token
+    /// @param bridge The address of the bridge of tokens
     /// @return The address of a new token
     function createNewToken(
         address originalToken,
         string memory name,
         string memory symbol,
-        uint8 decimals
-    ) external onlyAdmin returns (address) {
-        // This will create a new token on the same bridge the factory is deployed on (target chain)
-        WrappedERC20 wrappedToken = new WrappedERC20(name, symbol, decimals);
+        uint8 decimals,
+        address bridge
+    ) external returns (address) {
+        // This will create a new token on the same chain the factory is deployed on (target chain)
+        WrappedERC20 wrappedToken = new WrappedERC20(name, symbol, decimals, bridge);
         originalTargetTokens[originalToken] = address(wrappedToken);
 
         emit CreateNewToken(address(wrappedToken));
         
         return address(wrappedToken);
-    }
-    
-    /// @notice Sets the address of the bridge of the tokens
-    /// @param newBridge The address of the bridge
-    function setBridge(address newBridge) external onlyAdmin {
-        require(newBridge != address(0), "Factory: bridge can not have a zero address!");
-        bridge = newBridge;
     }
 }

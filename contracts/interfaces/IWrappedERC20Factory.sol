@@ -15,13 +15,9 @@ interface IWrappedERC20Factory {
         address originalToken,
         string memory name,
         string memory symbol,
-        uint8 decimals
+        uint8 decimals,
+        address bridge
     ) external returns(address);
-
-
-    /// @notice Sets the address of the bridge of the tokens
-    /// @param newBridge The address of the bridge
-    function setBridge(address newBridge) external;
 
     /// @dev Event gets emmited each time a new token is created
     event CreateNewToken(address indexed token);
