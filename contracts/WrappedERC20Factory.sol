@@ -43,13 +43,27 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
 
     /// @notice Checks if there is a wrapped token in the target chain for the original token 
     /// @param originalToken The address of the original token to check
-    function checkTargetToken(address originalToken) public view onlyAdmin returns (bool){
-        require (originalToken != address(0), "Factory: original token can not have a zero address!");
+    /// @return True if a wrapped token exists for a given original token
+    function checkTargetToken(address originalToken) public view onlyAdmin returns (bool) {
+        require(originalToken != address(0), "Factory: original token can not have a zero address!");
         // If there is no value for `originalToken` key then address(0) will be returned from the map
         if (originalToWrappedTokens[originalToken] != address(0)) {
             return true;
         }
         return false;
+    }
+
+    /// @notice Returns the name of the original token and the original chain for a wrapped token
+    /// @param wrappedToken The address of the wrapped token
+    /// @return The name of the original chain and the address of the original token
+    function checkOriginalToken(address wrappedToken) public view onlyAdmin returns (TokenInfo) {
+        require(originalToken != address(0), "Factory: wrapped token can not have a zero address!");
+        require(
+            wrappedToOriginalTokens[wrappedToken].originalChain != "",
+            "Factory: no original token found for a wrapped token!"
+        );
+        return wrappedToOriginalTokens[wrappedToken];
+
     }
 
     /// @notice Creates a new wrapped token on the target chain
