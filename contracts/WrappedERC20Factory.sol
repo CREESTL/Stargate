@@ -69,6 +69,13 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
         uint8 decimals,
         address bridge
     ) external returns (address) {
+
+        require(bytes(originalChain).length > 0, "Factory: chain name is too short!");
+        require(bytes(name).length > 0, "Factory: new token name is too short!");
+        require(bytes(symbol).length > 0, "Factory: new token symbol is too short!");
+        require(decimals > 0, "Factory: invalid decimals!");
+        require(bridge != address(0), "Factory: bridge can not have a zero address!");
+
         // This will create a new token on the same chain the factory is deployed on (target chain)
         WrappedERC20 wrappedToken = new WrappedERC20(name, symbol, decimals, bridge);
         // Map the original token to the wrapped token 
