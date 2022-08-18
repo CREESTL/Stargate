@@ -81,7 +81,7 @@ interface IBridge {
     event Lock(
         address indexed token,
         address indexed sender,
-        uint amount,
+        uint256 amount,
         string targetChain
     );
 
@@ -93,7 +93,7 @@ interface IBridge {
     event Burn(
         address indexed token,
         address indexed sender,
-        uint amount,
+        uint256 amount,
         string targetChain
     );
 
@@ -104,7 +104,7 @@ interface IBridge {
     event MintWithPermit(
         address indexed token,
         address indexed receiverAddress,
-        uint amount
+        uint256 amount
     );
 
     /// @notice Indicates that some tokens were unlocked by permitted user
@@ -114,7 +114,7 @@ interface IBridge {
     event UnlockWithPermit(
         address indexed token,
         address indexed receiverAddress,
-        uint amount
+        uint256 amount
     );
 
 }

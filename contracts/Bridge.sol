@@ -67,8 +67,8 @@ contract Bridge is IBridge, AccessControl {
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // The provided address gets a special role (used in signature verification)
-        _setupRole(BOT_MESSENGER_ROLE, botMessenger);
         botMessenger = _botMessenger;
+        _setupRole(BOT_MESSENGER_ROLE, botMessenger);
 
         feeRate = _feeRate;
 
