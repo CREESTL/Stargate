@@ -29,17 +29,6 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
     /// @dev Role required to call functions of the factory
     bytes32 public constant BOT_MESSANGER_ROLE = keccak256("BOT_MESSANGER_ROLE");
 
-    /// @dev Checks if a caller has admin rights
-    modifier onlyAdmin {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Factory: caller is not an admin!");
-        _;
-    }
-
-    /// @notice Gives caller admin rights
-    constructor() {
-        // Caller gets admin rights
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    }
 
     /// @notice Checks if there is a wrapped token in the target chain for the original token 
     /// @param originalToken The address of the original token to check
