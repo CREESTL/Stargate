@@ -13,6 +13,9 @@ import "./WrappedERC20.sol";
 contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
 
 
+    /// @dev An address of a token template to clone
+    address immutable tokenTemplate;
+
     /// @dev Map of addresses of tokens in the original and target chains
     mapping(address => address) internal originalToWrappedTokens;
 
@@ -28,6 +31,11 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
 
     /// @dev Role required to call functions of the factory
     bytes32 public constant BOT_MESSANGER_ROLE = keccak256("BOT_MESSANGER_ROLE");
+
+    /// @dev Create a new token template to copy and upgrade it later
+    constructor() {
+        tokenTemplate = address(new WrappedERC20());
+    }
 
 
     /// @notice Checks if there is a wrapped token in the target chain for the original token 
@@ -79,16 +87,21 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
         require(decimals > 0, "Factory: invalid decimals!");
         require(bridge != address(0), "Factory: bridge can not have a zero address!");
 
+        // Check if a wrapped token for the original token already exists
+        require(checkTargetToken(originalToken) == false, "Factory: wrapped token already exists!");
+
+        // Copy the template functionality and create a new token (proxy pattern)
         // This will create a new token on the same chain the factory is deployed on (target chain)
-        WrappedERC20 wrappedToken = new WrappedERC20(name, symbol, decimals, bridge);
+        address wrappedToken = Clones.clone(tokenTemplate);
+        WrappedERC20(wrappedToken).initialize(name, symbol, decimals, bridge);
         // Map the original token to the wrapped token 
-        originalToWrappedTokens[originalToken] = address(wrappedToken);
+        originalToWrappedTokens[originalToken] = wrappedToken;
 
         // And do the same backwards: map the wrapped token to the original token and original chain
         TokenInfo memory wrappedTokenInfo = TokenInfo(originalChain, originalToken);
         wrappedToOriginalTokens[address(wrappedToken)] = wrappedTokenInfo;
 
-        emit CreateNewToken(originalChain, originalToken, wrappedToken.name(), address(wrappedToken));
+        emit CreateNewToken(originalChain, originalToken, name, wrappedToken);
         
         return address(wrappedToken);
     }

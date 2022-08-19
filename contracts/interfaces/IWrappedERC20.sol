@@ -7,6 +7,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @title An interface for a custom ERC20 contract used in the bridge
 interface IWrappedERC20 is IERC20 {
 
+    /// @notice Returns the name of the token
+    /// @return The name of the token
+    function name() external view returns(string memory);
+
+    /// @notice Returns the symbol of the token
+    /// @return The symbol of the token
+    function symbol() external view returns(string memory);
+
+    /// @notice Returns number of decimals of the token
+    /// @return The number of decimals of the token
+    function decimals() external view returns(uint8);
 
     /// @notice Returns the address of the bridge contract
     /// @return The address of the bridge contract

@@ -3,35 +3,60 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "./interfaces/IWrappedERC20.sol";
 
 /// @title A custom ERC20 contract used in the bridge
-contract WrappedERC20 is IWrappedERC20, ERC20 {
+contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
 
-    address private _bridge;
-    uint8 private _decimals;
-
-    /// @dev Creates a token with an upgraded functionality of ERC20 token 
-    /// @param name The name of the token
-    /// @param symbol The symbol of the token
-    /// @param decimals_ Number of decimals of the token
-    /// @param bridge_ The address of the bridge of the tokens 
-    constructor(string memory name, string memory symbol, uint8 decimals_, address bridge_) 
-        ERC20(name, symbol) {
-            _decimals = decimals_;
-            _bridge = bridge_;
-        }
-
+    address internal _bridge;
+    uint8 internal _decimals;
+    string internal _name;
+    string internal _symbol;  
+    
     /// @dev Checks if the caller is the bridge contract
     modifier onlyBridge {
         require(msg.sender == _bridge, "BridgeToken: caller is not a bridge!");
         _;
     }
 
+    /// @dev Creates an "empty" template token that will be cloned in the future
+    constructor() ERC20("", "") {}
+
+    /// @dev Upgrades an "empty" template. Initializes internal variables. 
+    /// @param name_ The name of the token
+    /// @param symbol_ The symbol of the token
+    /// @param decimals_ Number of decimals of the token
+    /// @param bridge_ The address of the bridge of the tokens 
+    function initialize(
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_,
+        address bridge_
+    ) public virtual initializer {
+        _decimals = decimals_;
+        _bridge = bridge_;
+        _name = name_;
+        _symbol = symbol_;
+    }
+
+    /// @notice Returns the name of the token
+    /// @return The name of the token
+    function name() public view override(ERC20, IWrappedERC20) returns(string memory) {
+        return _name;
+    }
+
+    /// @notice Returns the symbol of the token
+    /// @return The symbol of the token
+    function symbol() public view override(ERC20, IWrappedERC20) returns(string memory) {
+        return _symbol;
+    }
+
     /// @notice Returns number of decimals of the token
     /// @return The number of decimals of the token
-    function decimals() public view override returns(uint8) {
+    function decimals() public view override(ERC20, IWrappedERC20) returns(uint8) {
         return _decimals;
     }
 
