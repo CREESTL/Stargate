@@ -79,7 +79,7 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     function lock(
         address token,
         uint256 amount,
-        string receiver,
+        string memory receiver,
         string memory targetChain
     )
     external
@@ -135,13 +135,13 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     /// @notice Burns tokens on a target chain
     /// @param token Address of the token to burn (zero address for native tokens)
     /// @param amount The amount of tokens to burn
-    /// @param receiver The receiver of unlocked tokens on the original chain (EVM)
+    /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
     function burn(
         address token,
         uint256 amount,
-        address receiver,
+        string memory receiver,
         string memory targetChain
     )
     external

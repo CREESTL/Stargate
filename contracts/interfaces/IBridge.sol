@@ -26,7 +26,7 @@ interface IBridge {
     function lock(
         address token,
         uint256 amount,
-        string receiver,
+        string memory receiver,
         string memory targetChain
     ) external payable returns(bool);
 
@@ -39,7 +39,7 @@ interface IBridge {
     function burn(
         address token,
         uint256 amount,
-        address receiver,
+        string memory receiver,
         string memory targetChain
     ) external returns(bool);
 
@@ -100,7 +100,7 @@ interface IBridge {
     event Burn(
         address indexed token,
         address indexed sender,
-        address indexed receiver,
+        string indexed receiver,
         uint256 amount,
         string targetChain
     );
