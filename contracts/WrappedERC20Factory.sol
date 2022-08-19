@@ -2,16 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-
 import "./interfaces/IWrappedERC20Factory.sol";
 import "./interfaces/IWrappedERC20.sol";
 import "./WrappedERC20.sol";
 
 
 /// @title A factory of custom ERC20 tokens used in the bridge
-contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
-
+contract WrappedERC20Factory is IWrappedERC20Factory {
 
     /// @dev An address of a token template to clone
     address immutable tokenTemplate;
@@ -33,14 +30,10 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
     /// @dev Should be used by the back/front-end
     mapping(string => address) internal wrappedNameToAddress;
 
-    /// @dev Role required to call functions of the factory
-    bytes32 public constant BOT_MESSANGER_ROLE = keccak256("BOT_MESSANGER_ROLE");
-
     /// @dev Create a new token template to copy and upgrade it later
     constructor() {
         tokenTemplate = address(new WrappedERC20());
     }
-
 
     /// @notice Checks if there is a wrapped token in the target chain for the original token 
     /// @param originalToken The address of the original token to check
@@ -67,13 +60,12 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
 
     }
 
-
     /// @notice Returns the address of the wrapped token by its name
     function getWrappedAddress(string memory name) public view returns (address) {
         require(bytes(name).length > 0 , "Factory: token name is too short!");
+        require(wrappedNameToAddress[name] != address(0), "Factory: no wrapped token with this name!");
         return wrappedNameToAddress[name];
     }
-
 
     /// @notice Creates a new wrapped token on the target chain
     /// @dev Should be deployed on the target chain
