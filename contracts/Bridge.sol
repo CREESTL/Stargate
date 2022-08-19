@@ -73,13 +73,13 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     /// @notice Locks tokens on the source chain
     /// @param token Address of the token to lock (zero address for native tokens)
     /// @param amount The amount of tokens to lock
-    /// @param receiver The receiver of wrapped tokens on the target chain
+    /// @param receiver The receiver of wrapped tokens on the target chain (not only EVM)
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lock(
         address token,
         uint256 amount,
-        address receiver,
+        string receiver,
         string memory targetChain
     )
     external
@@ -135,7 +135,7 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     /// @notice Burns tokens on a target chain
     /// @param token Address of the token to burn (zero address for native tokens)
     /// @param amount The amount of tokens to burn
-    /// @param receiver The receiver of unlocked tokens on the original chain
+    /// @param receiver The receiver of unlocked tokens on the original chain (EVM)
     /// @param targetChain The name of the target chain
     /// @return True if tokens were burnt successfully
     function burn(
@@ -268,6 +268,10 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
                 address(this).balance >= amount,
                 "Bridge: not enough native tokens on the bridge balance!"
             );
+
+            // Verify the signature (contains v, r, s) using the domain separator
+            // This will prove that the user has burnt tokens on the target chain
+            signatureVerification(nonce, amount, v, r, s, token, sender);
 
             // Transfer native tokens of the original chain from the bridge to the caller
             (bool success, ) = sender.call{ value: amount }("");
