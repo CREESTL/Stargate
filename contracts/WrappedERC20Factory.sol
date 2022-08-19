@@ -29,6 +29,10 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
     /// @dev Map of addresses of wrapped tokens and addresses of original tokens and original chains
     mapping(address => TokenInfo) internal wrappedToOriginalTokens;
 
+    /// @dev Map of names and addresses of wrapped tokens
+    /// @dev Should be used by the back/front-end
+    mapping(string => address) internal wrappedNameToAddress;
+
     /// @dev Role required to call functions of the factory
     bytes32 public constant BOT_MESSANGER_ROLE = keccak256("BOT_MESSANGER_ROLE");
 
@@ -53,7 +57,7 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
     /// @notice Returns the name of the original token and the original chain for a wrapped token
     /// @param wrappedToken The address of the wrapped token
     /// @return The name of the original chain and the address of the original token
-    function checkOriginalToken(address wrappedToken) public view returns (TokenInfo memory) {
+    function getOriginalToken(address wrappedToken) public view returns (TokenInfo memory) {
         require(wrappedToken != address(0), "Factory: wrapped token can not have a zero address!");
         require(
             bytes(wrappedToOriginalTokens[wrappedToken].originalChain).length > 0,
@@ -62,6 +66,14 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
         return wrappedToOriginalTokens[wrappedToken];
 
     }
+
+
+    /// @notice Returns the address of the wrapped token by its name
+    function getWrappedAddress(string memory name) public view returns (address) {
+        require(bytes(name).length > 0 , "Factory: token name is too short!");
+        return wrappedNameToAddress[name];
+    }
+
 
     /// @notice Creates a new wrapped token on the target chain
     /// @dev Should be deployed on the target chain
@@ -100,6 +112,9 @@ contract WrappedERC20Factory is IWrappedERC20Factory, AccessControl {
         // And do the same backwards: map the wrapped token to the original token and original chain
         TokenInfo memory wrappedTokenInfo = TokenInfo(originalChain, originalToken);
         wrappedToOriginalTokens[address(wrappedToken)] = wrappedTokenInfo;
+
+        // Save tokens address and name to be used off-chain
+        wrappedNameToAddress[name] = wrappedToken;
 
         emit CreateNewToken(originalChain, originalToken, name, wrappedToken);
         
