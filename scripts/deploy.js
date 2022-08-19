@@ -1,29 +1,139 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
-const hre = require("hardhat");
+// SPDX-License-Identifier: MIT 
+
+const { ethers, network } = require("hardhat");
+const fs = require("fs");
+const path = require("path");
+const delay = require("delay");
+
+
+// JSON file to keep information about previous deployments
+const OUTPUT_DEPLOY = require("./deployOutput.json");
+
+
+let contractName;
 
 async function main() {
-  // const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  // const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  // const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
-  //
-  // const lockedAmount = hre.ethers.utils.parseEther("1");
-  //
-  // const Lock = await hre.ethers.getContractFactory("Lock");
-  // const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
-  //
-  // await lock.deployed();
-  //
-  // console.log("Lock with 1 ETH deployed to:", lock.address);
+
+  let [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
+
+  console.log(`[NOTICE!] Chain of deployment: ${network.name}`);
+
+  // NOTE WrappedERC20 is not supposed to be deployed. It is deployed by the Factory.
+
+  // ====================================================
+
+  // Contract #1: Bridge
+
+  // Deploy
+  contractName = "Bridge";
+  console.log(`[${contractName}]: Start of Deployment...`);
+  _contractProto = await ethers.getContractFactory(contractName);
+  // Owner gets admin rights. Fee rate is 2% (200 BPS)
+  contractDeployTx = await _contractProto.deploy(owner.address, 200);
+  bridge = await contractDeployTx.deployed();
+  console.log(`[${contractName}]: Deployment Finished!`);
+  OUTPUT_DEPLOY[network.name][contractName].address = bridge.address;
+
+  // Verify
+  console.log(`[${contractName}]: Start of Verification...`);
+  
+  // Sleep for 90 seconds, otherwise block explorer will fail
+  await delay(90000);
+
+  // Write deployment and verification info into the JSON file before actual verification
+  // The reason is that verification may fail if you try to verify the same contract again
+  // And the JSON file will not change
+  OUTPUT_DEPLOY[network.name][contractName].address = bridge.address;
+  if (network.name === "polygon") {
+    url = "https://polygonscan.com/address/" + bridge.address + "#code";
+  } else if (network.name === "mumbai") {
+    url = "https://mumbai.polygonscan.com/address/" + bridge.address + "#code";
+  } else if (network.name === "ethereum") {
+    url = "https://etherscan.io/address/" + bridge.address + "#code";
+  } else if (network.name === "rinkeby") {
+    url = "https://rinkeby.etherscan.io/address/" + bridge.address + "#code";
+  } else if (network.name === "bsc") {
+    url = "https://bscscan.com/address/" + bridge.address + "#code";
+  } 
+  OUTPUT_DEPLOY[network.name][contractName].verification = url;
+  
+  // Verify the contract
+  // Provide all contract's dependencies as separate files
+  // NOTE It may fail with "Already Verified" error. Do not pay attention to it. Verification will
+  // be done correctly!
+  try { 
+    await hre.run("verify:verify", {
+      address: bridge.address,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+  console.log(`[${contractName}]: Verification Finished!`);
+  
+  // ====================================================
+
+  // Contract #2: WrappedERCFactory
+
+  // Deploy
+  contractName = "WrappedERC20Factory";
+  console.log(`[${contractName}]: Start of Deployment...`);
+  _contractProto = await ethers.getContractFactory(contractName);
+  // Provide the factory with bridge address.
+  contractDeployTx = await _contractProto.deploy(bridge.address);
+  factory = await contractDeployTx.deployed();
+  console.log(`[${contractName}]: Deployment Finished!`);
+  OUTPUT_DEPLOY[network.name][contractName].address = factory.address;
+
+  // Verify
+  console.log(`[${contractName}]: Start of Verification...`);
+  
+  // Sleep for 90 seconds, otherwise block explorer will fail
+  await delay(90000);
+
+  // Write deployment and verification info into the JSON file before actual verification
+  // The reason is that verification may fail if you try to verify the same contract again
+  // And the JSON file will not change
+  OUTPUT_DEPLOY[network.name][contractName].address = factory.address;
+  if (network.name === "polygon") {
+    url = "https://polygonscan.com/address/" + factory.address + "#code";
+  } else if (network.name === "mumbai") {
+    url = "https://mumbai.polygonscan.com/address/" + factory.address + "#code";
+  } else if (network.name === "ethereum") {
+    url = "https://etherscan.io/address/" + factory.address + "#code";
+  } else if (network.name === "rinkeby") {
+    url = "https://rinkeby.etherscan.io/address/" + factory.address + "#code";
+  } else if (network.name === "bsc") {
+    url = "https://bscscan.com/address/" + factory.address + "#code";
+  } 
+  OUTPUT_DEPLOY[network.name][contractName].verification = url;
+  
+  // Verify the contract
+  // Provide all contract's dependencies as separate files
+  // NOTE It may fail with "Already Verified" error. Do not pay attention to it. Verification will
+  // be done correctly!
+  try { 
+    await hre.run("verify:verify", {
+      address: factory.address,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+  console.log(`[${contractName}]: Verification Finished!`);
+
+  // ====================================================
+
+  console.log(`See Results in "${__dirname + '/deployOutput.json'}" File`);
+  
+  fs.writeFileSync(
+    path.resolve(__dirname, "./deployOutput.json"),
+    JSON.stringify(OUTPUT_DEPLOY, null, "  ")
+  );
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

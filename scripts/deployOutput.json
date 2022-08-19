@@ -1,0 +1,62 @@
+{
+  "rinkeby": {
+    "Bridge": {
+      "address": "0x32784Fe061F92746e036124160b169BC36fc98b5",
+      "verification": "https://rinkeby.etherscan.io/address/0x32784Fe061F92746e036124160b169BC36fc98b5#code"
+    },
+    "WrappedERC20Factory": {
+      "address": "0xf76397b8a3BcE81694127537152103555F2cEC37",
+      "verification": "https://rinkeby.etherscan.io/address/0xf76397b8a3BcE81694127537152103555F2cEC37#code"
+    }
+  },
+  "mumbai": {
+    "Bridge": {
+      "address": "",
+      "verification": ""
+    },
+    "WrappedERC20Factory": {
+      "address": "",
+      "verification": ""
+    }
+  },
+  "chapel": {
+    "Bridge": {
+      "address": "",
+      "verification": ""
+    },
+    "WrappedERC20Factory": {
+      "address": "",
+      "verification": ""
+    }
+  },
+  "ethereum": {
+    "Bridge": {
+      "address": "",
+      "verification": ""
+    },
+    "WrappedERC20Factory": {
+      "address": "",
+      "verification": ""
+    }
+  },
+  "polygon": {
+    "Bridge": {
+      "address": "",
+      "verification": ""
+    },
+    "WrappedERC20Factory": {
+      "address": "",
+      "verification": ""
+    }
+  },
+  "bsc": {
+    "Bridge": {
+      "address": "",
+      "verification": ""
+    },
+    "WrappedERC20Factory": {
+      "address": "",
+      "verification": ""
+    }
+  }
+}

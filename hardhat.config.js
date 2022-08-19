@@ -1,22 +1,31 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
-require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
+require("@nomicfoundation/hardhat-chai-matchers");
 require("solidity-coverage");
 require("hardhat-gas-reporter");
 
 const {
         BSCSCAN_API_KEY,
-        POLYSCAN_API_KEY,
+        POLYGONSCAN_API_KEY,
         ETHERSCAN_API_KEY,
-        ANKR_BSC_TESTNET_KEY,
-        ANKR_BSC_MAINNET_KEY,
-        MNEMONIC
+        BSC_PRIVATE_KEY,
+        ETH_PRIVATE_KEY,
+        POLYGON_PRIVATE_KEY,
+        INFURA_API_KEY
     } = process.env;
-/** @type import('hardhat/config').HardhatUserConfig */
+
 module.exports = {
-  solidity: "0.8.11",
+  solidity: {
+    version: "0.8.9",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  },
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
@@ -24,50 +33,48 @@ module.exports = {
     localhost: {
       url: "http://127.0.0.1:8545",
     },
-    bsc_testnet: {
-      url: `https://apis.ankr.com/${ANKR_BSC_TESTNET_KEY}/537a98904656e403a57bb70fa11c1a73/binance/full/test`,
-      chainId: 97,
-      gasPrice: 20000000000,
-      accounts: {mnemonic: MNEMONIC},
+    // BSC Chapel testnet
+    chapel: {
+      url: `https://rpc.ankr.com/bsc_testnet_chapel/`,
+      accounts: [BSC_PRIVATE_KEY]
     },
-    bsc_mainnet: {
-      url: "https://bsc-dataseed.binance.org/",
-      chainId: 56,
-      gasPrice: 20000000000,
-      accounts: {mnemonic: MNEMONIC}
+    // BSC mainnet
+    bsc: {
+      url: "https://rpc.ankr.com/bsc",
+      accounts: [BSC_PRIVATE_KEY]
     },
-    polygon_testnet: {
-      url: `https://apis.ankr.com/${ANKR_BSC_MAINNET_KEY}/537a98904656e403a57bb70fa11c1a73/binance/full/test`,
-      chainId: 97,
-      gasPrice: 20000000000,
-      accounts: {mnemonic: MNEMONIC},
+    // Polygon Mumbai testnet
+    mumbai: {
+      url: "https://rpc-mumbai.maticvigil.com",
+      accounts: [POLYGON_PRIVATE_KEY]
     },
-    polygon_mainnet: {
-      url: "https://bsc-dataseed.binance.org/",
-      chainId: 56,
-      gasPrice: 20000000000,
-      accounts: {mnemonic: MNEMONIC}
+    // Polygon mainnet
+    polygon: {
+      url: "https://rpc-mainnet.maticvigil.com",
+      accounts: [POLYGON_PRIVATE_KEY]
     },
-      eth_mainnet: {
-          url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_MAINNET_API_KEY}`,
-          accounts: { mnemonic: process.env.MNEMONIC },
-          chainId: 1
-      },
-      eth_testnet: {
-          url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_ETH_RINKEBY_API_KEY}`,
-          accounts: { mnemonic: process.env.MNEMONIC },
-          chainId: 4
-      }
+    // Ethereum Rinkeby testnet
+    rinkeby: {
+      url: `https://rinkeby.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [ETH_PRIVATE_KEY]
+    },
+    // Ethereum mainnet
+    ethereum: {
+      url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [ETH_PRIVATE_KEY]
+    }
   },
   mocha: {
-    timeout: 400000
+    timeout: 20000000000
   },
   etherscan: {
     apiKey: {
       bscTestnet: BSCSCAN_API_KEY,
       bsc: BSCSCAN_API_KEY,
       ethereum: ETHERSCAN_API_KEY,
-      polygon: POLYSCAN_API_KEY
+      rinkeby: ETHERSCAN_API_KEY,
+      polygonMumbai: POLYGONSCAN_API_KEY,
+      polygon: POLYGONSCAN_API_KEY
     }
   },
   skipFiles: ["node_modules"],

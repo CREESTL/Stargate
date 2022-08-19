@@ -1,349 +1,443 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./interfaces/IBridge.sol";
-import "./interfaces/IBridgeTokenStandardERC20.sol";
+import "./interfaces/IWrappedERC20.sol";
+import "./WrappedERC20.sol";
 
 import "hardhat/console.sol";
 
-contract Bridge is IBridge, AccessControl {
+/// @title A ERC20-ERC20 bridge contract
+contract Bridge is IBridge, AccessControl, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
-    using SafeERC20 for IBridgeTokenStandardERC20;
+    using SafeERC20 for IWrappedERC20;
 
-    IBridgeTokenStandardERC20 public bridgeStandardERC20;
-    // token address -> domainSeparator
-    mapping(address => bytes32) public allowedTokens;
+    ///@dev Names of supported chains
     mapping(string => bool) public supportedChains;
-    //отслеживаем комиссии
-    mapping(address => uint) public feeTokenAndAmount;
-
+    ///@dev Monitor fees
+    mapping(address => uint256) public feesForToken;
+    ///@dev Monitor nonces. Prevent replay attacks
     mapping(uint256 => bool) public nonces;
-//    bytes32 public immutable domainSeparatorForNativeToken;
 
     bytes32 public constant BOT_MESSENGER_ROLE = keccak256("BOT_MESSENGER_ROLE");
     address public botMessenger;
 
-    uint private constant MAX_BP = 1000;
-    uint public feeRate; // 3 - 0.3%
-    // для отслеживания токенов, которые пользователь хочет анврапнуть
-    struct TokenInfo {
-        string originalChain; // оригинальный блокчейн
-        string originalTokenAddress; // адрес токена из оригинального блокчейна
-        address wrappedTokenAddress; // враппед адрес на данном блокчейне
-    }
+    /// @dev Maximum amount of basis points. Used to calculate final fee.
+    uint256 private constant MAX_BP = 1000;
+    /// @dev Fee rate. Used to calculate final fee. May be changed. 0.3 - 3%
+    uint256 public feeRate; 
 
-    TokenInfo[] public tokenInfos;
-
+    /// @dev Checks if caller is a messenger bot
     modifier onlyMessengerBot {
-        require(hasRole(BOT_MESSENGER_ROLE, _msgSender()), "onlyMessengerBot");
+        require(hasRole(BOT_MESSENGER_ROLE, msg.sender), "Bridge: the caller is not a messenger bot!");
         _;
     }
 
+    /// @dev Checks if caller is an admin
     modifier onlyAdmin {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "onlyAdmin");
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Bridge: the caller is not an admin!");
         _;
     }
 
-    modifier addressIsNull(address _address) {
-        require(_address != address(0), "The address is null");
+    /// @dev Checks the contracts is supported on the given chain
+    modifier isSupportedChain(string memory chain) {
+        require(supportedChains[chain], "Bridge: the chain is not supported!");
         _;
     }
 
-    modifier tokenIsAllowed(address _token) {
-        require(allowedTokens[_token] != 0, "invalidToken");
-        _;
-    }
-
-    modifier isSupportedChain(string memory _chain) {
-        require(supportedChains[_chain], "Not supported");
-        _;
-    }
-
+    /// @notice Initializes internal variables, sets roles
+    /// @param _botMessenger The address of bot messenger
+    /// @param _feeRate The fee rate in basis points
     constructor(
-        address _bridgeStandardERC20,
         address _botMessenger,
-        uint _feeRate
-    ) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _setupRole(BOT_MESSENGER_ROLE, _botMessenger);
+        uint256 _feeRate
+    ) { 
+        // The caller becomes an admin
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // The provided address gets a special role (used in signature verification)
         botMessenger = _botMessenger;
+        _setupRole(BOT_MESSENGER_ROLE, botMessenger);
 
         feeRate = _feeRate;
 
-        if (_bridgeStandardERC20 != address(0)) {
-            bridgeStandardERC20 = IBridgeTokenStandardERC20(_bridgeStandardERC20);
-        }
-
-    }
-    // передается адрес токен, с которым должно быть взаимодействие
-    function burn(
-        address _token,
-        string memory _to,
-        uint256 _amount,
-        string memory _direction
-    )
-    external
-    override
-    addressIsNull(_token)
-    tokenIsAllowed(_token)
-    isSupportedChain(_direction)
-    returns(bool)
-    {
-        address sender = _msgSender();
-        uint feeAmount = _calcFee(_amount);
-        feeTokenAndAmount[_token] += feeAmount;
-
-        IBridgeTokenStandardERC20(_token).safeTransferFrom(sender, address(this), _amount);
-        IBridgeTokenStandardERC20(_token).burn(address(this), _amount - feeAmount);
-
-        emit Burn(_token, sender, _to, _amount - feeAmount, _direction);
-
-        return true;
     }
 
+
+    /// @notice Locks tokens on the source chain
+    /// @param token Address of the token to lock (zero address for native tokens)
+    /// @param amount The amount of tokens to lock
+    /// @param receiver The receiver of wrapped tokens on the target chain
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were locked successfully
     function lock(
-        address _token,
-        string memory _to,
-        uint256 _amount,
-        string memory _direction
+        address token,
+        uint256 amount,
+        address receiver,
+        string memory targetChain
     )
     external
+    // If a user wants to lock native tokens - he should provide `amount+fee` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
     payable
     override
-    tokenIsAllowed(_token)
-    isSupportedChain(_direction)
+    isSupportedChain(targetChain)
+    nonReentrant
     returns(bool)
     {
-        address sender = _msgSender();
+        address sender = msg.sender;
 
-        if (_token != address(0)){
-            uint feeAmount = _calcFee(_amount);
-            feeTokenAndAmount[_token] += feeAmount;
+        // Calculate the fee and save it
+        uint256 feeAmount = calcFee(amount);
+        feesForToken[token] += feeAmount;
 
-            IERC20(_token).safeTransferFrom(sender, address(this), _amount);
+        // Custom tokens
+        if (token != address(0)){
+     
+            // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the frontend 
+            // before transfering the tokens
 
-            emit Lock(_token, sender, _to, _amount - feeAmount, _direction);
+            // After this transfer all tokens are in possesion of the bridge contract and they can not be
+            // withdrawn by explicitly calling `ERC20.safeTransferFrom` of `ERC20.transferFrom` because the bridge contract
+            // does not provide allowance of these tokens for anyone. The only way to transfer tokens from the
+            // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
+            // Thus, transfered tokens are locked inside the bridge contract
+            // Transfer additional fee with the initial amount of tokens
+            IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
+
+            // Emit the lock event with detailed information
+            emit Lock(token, sender, receiver, amount, targetChain);
 
             return true;
+
+        // Native tokens
         } else {
-            require(msg.value != 0, "Invalid value");
 
-            uint feeAmount = _calcFee(msg.value);
-            feeTokenAndAmount[_token] += feeAmount;
+            // User provides some native tokens to the bridge when calling this `lock` method so no
+            // need to transfer any tokens here once more
+            // Make sure that he sent enought tokens to cover both amount and fee
+            require(msg.value >= amount + feeAmount, "Bridge: not enough tokens to cover the fee!");
 
-            emit Lock(_token, sender, _to, msg.value - feeAmount, _direction);
+            emit Lock(token, sender, receiver, amount, targetChain);
 
             return true;
         }
+
     }
 
-    function mintWithPermit(
-        address _token,
-        uint256 _amount,
-        uint256 _nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+
+    /// @notice Burns tokens on a target chain
+    /// @param token Address of the token to burn (zero address for native tokens)
+    /// @param amount The amount of tokens to burn
+    /// @param receiver The receiver of unlocked tokens on the original chain
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were burnt successfully
+    function burn(
+        address token,
+        uint256 amount,
+        address receiver,
+        string memory targetChain
     )
     external
     override
-    addressIsNull(_token)
-    tokenIsAllowed(_token)
+    isSupportedChain(targetChain)
+    nonReentrant
     returns(bool)
-    {
-        address sender = _msgSender();
-        bytes32 domainSeparator = allowedTokens[_token];
+    {   
+        // Only WrappedERC20 tokens can be burned, because only WrappedERC20 are minted on target chain
+        // Example between Ethereum and Polygon:
+        // Lock: ETH (Ethereum) -> wETH(Polygon)
+        // Burn:
+        //     correct: wETH(Polygon) -> ETH(Ethereum)
+        //     incorrect: MATIC(Polygon) -> ETH(Ethereum)
 
-        signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
-        IBridgeTokenStandardERC20(_token).mint(sender, _amount);
+        address sender = msg.sender;
 
-        emit MintWithPermit(_token, sender, _amount);
+        // Calculate the fee and save it
+        uint256 feeAmount = calcFee(amount);
+        feesForToken[token] += feeAmount;
+
+        // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the frontend 
+        // before transfering the tokens
+
+        // Transfer user's tokens (and a fee) to the bridge contract from target chain account
+        // NOTE This method should be called from the address on the target chain
+        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
+        // And burn them immediately
+        // Burn all tokens except the fee
+        IWrappedERC20(token).burn(address(this), amount);
+
+        emit Burn(token, sender, receiver, amount, targetChain);
 
         return true;
     }
 
-    function unlockWithPermit(
-        address _token,
-        uint256 _amount,
-        uint256 _nonce,
+
+    /// @notice Mints target tokens if the user is permitted to do so
+    /// @param token Address of the token to mint
+    /// @param amount The amount of tokens to mint
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @return True if tokens were minted successfully
+    function mintWithPermit(
+        address token,
+        uint256 amount,
+        uint256 nonce,
         uint8 v,
         bytes32 r,
         bytes32 s
     )
     external
     override
-    tokenIsAllowed(_token)
+    nonReentrant
+    returns(bool)
+    {   
+        // Only WrappedERC20 tokens can be minted on the target chain. 
+        // Native tokens of target chain can not be an equivalent of any tokens of the original chain
+        address sender = msg.sender;
+
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has locked tokens on the source chain
+        signatureVerification(nonce, amount, v, r, s, token, sender);
+        // Mint wrapped tokens to the user's address on the target chain
+        // NOTE This method should be called from the address on the target chain 
+        IWrappedERC20(token).mint(sender, amount);
+
+        emit MintWithPermit(token, sender, amount);
+
+        return true;
+    }
+
+    /// @notice Unlocks tokens if the user is permitted to unlock
+    /// @param token Address of the token to unlock (zero address for native tokens)
+    /// @param amount The amount of tokens to unlock
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @return True if tokens were unlocked successfully
+    function unlockWithPermit(
+        address token,
+        uint256 amount,
+        uint256 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+    external
+    override
+    nonReentrant
     returns(bool)
     {
-        address sender = _msgSender();
-        if (_token != address(0)) {
+        address sender = msg.sender;
 
-            bytes32 domainSeparator = allowedTokens[_token];
-            signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
-
+        // Custom tokens
+        if (token != address(0)){
+            // Check if there is enough custom tokens on the bridge (no fees)
             require(
-                IERC20(_token).balanceOf(address(this)) >= feeTokenAndAmount[_token] + _amount,
-                "Incorrect amount"
+                IWrappedERC20(token).balanceOf(address(this)) >= amount,
+                "Bridge: not enough ERC20 tokens on the bridge balance!"
             );
 
-            IERC20(_token).safeTransfer(sender, _amount);
 
-            emit UnlockWithPermit(_token, sender, _amount);
+            // Verify the signature (contains v, r, s) using the domain separator
+            // This will prove that the user has burnt tokens on the target chain
+            signatureVerification(nonce, amount, v, r, s, token, sender);
+
+            // This is the only way to withdraw locked tokens from the bridge contract
+            // (see `lock` method of this contract)
+            IWrappedERC20(token).safeTransfer(sender, amount);
+
+            emit UnlockWithPermit(token, sender, amount);
 
             return true;
-        } else {
-            bytes32 domainSeparator = allowedTokens[_token];
-            signatureVerification(_nonce, _amount, v, r, s, domainSeparator, sender);
 
+        // Native tokens
+        } else {
+
+            // Check if there is enough native tokens on the bridge (no fees)
             require(
-                address(this).balance >= feeTokenAndAmount[_token] + _amount,
-                "Incorrect amount"
+                address(this).balance >= amount,
+                "Bridge: not enough native tokens on the bridge balance!"
             );
 
-            (bool success, ) = sender.call{ value: _amount }("");
+            // Transfer native tokens of the original chain from the bridge to the caller
+            (bool success, ) = sender.call{ value: amount }("");
+            require(success, "Bridge: tokens unlock failed!");
 
-            emit UnlockWithPermit(_token, sender, _amount);
+            emit UnlockWithPermit(token, sender, amount);
 
             return true;
-        }
+
+        }    
+        
     }
 
-    function setBridgedStandardERC20(
-        address _bridgeStandardERC20
-    )
-    external
-    onlyAdmin
-    addressIsNull(_bridgeStandardERC20)
-    {
-        bridgeStandardERC20 = IBridgeTokenStandardERC20(_bridgeStandardERC20);
+    /// @notice Sets the admin
+    /// @param newAdmin Address of the admin   
+    function setAdmin(address newAdmin) external onlyAdmin {
+        grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
     }
 
-    function setAdmin(address _newAdmin) external onlyAdmin {
-        grantRole(DEFAULT_ADMIN_ROLE, _newAdmin);
+    /// @notice Sets a new fee rate for bridge operations
+    /// @param newFeeRate A new rate in basis points
+    function setFeeRate(uint256 newFeeRate) external onlyAdmin {
+        require(newFeeRate > 0 && newFeeRate <= MAX_BP, "Bridge: fee rate is too high!");
+        feeRate = newFeeRate;
     }
 
-    function setAllowedToken(
-        address _token,
-        string memory _name
-    )
-    external
-    onlyAdmin
-    {
-        bytes32 domainSeparator;
-        if (_token != address(0)) {
-            ERC20 token = ERC20(_token);
-            domainSeparator = keccak256(
-                abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
-                    keccak256(bytes(token.name())),
-                    keccak256(bytes("1")),
-                    block.chainid,
-                    address(this)
-                )
-            );
+    /// @notice Calculates a fee for bridge operations
+    /// @param amount An amount of tokens that were sent. The more tokens - the higher the fee
+    /// @return The fee amount
+    function calcFee(uint256 amount) public view onlyAdmin returns(uint256) {
+        return amount * feeRate / MAX_BP;
+    }
+
+
+    /// @notice Withdraws fees accumulated from a specific token operations
+    /// @param token The address of the token (zero address for native token)
+    /// @param amount The amount of fees from a single token to be withdrawn
+    function withdraw(address token, uint256 amount) external nonReentrant onlyAdmin {
+        require(feesForToken[token] != 0, "Bridge: no fees were collected for this token!");
+        require(feesForToken[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
+        
+        feesForToken[token] -= amount;
+        
+        // Custom token
+        if (token != address(0)) {
+            IWrappedERC20(token).safeTransfer(msg.sender, amount);
+        // Native token
         } else {
-            // для нативной валюты
-            require(bytes(_name).length != 0, "Name is empty");
-            domainSeparator = keccak256(
-                abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
-                    keccak256(bytes(_name)),
-                    keccak256(bytes("1")),
-                    block.chainid,
-                    address(this)
-                )
-            );
+            (bool success, ) = msg.sender.call{ value: amount }("");
+            require(success, "Bridge: tokens withdrawal failed!");
         }
-        allowedTokens[_token] = domainSeparator;
+
     }
 
-    function removeAllowedToken(address _token) external onlyAdmin {
-        allowedTokens[_token] = 0;
+    /// @notice Adds a chain supported by the bridge
+    /// @param chain The name of the chain
+    function setSupportedChain(string memory chain) external onlyAdmin {
+        supportedChains[chain] = true;
     }
 
-    function setFeeRate(uint _feeRate) external onlyAdmin {
-        require(_feeRate > 0 && _feeRate <= MAX_BP, "Out of range");
-        feeRate = _feeRate;
+    /// @notice Removes a chain supported by the bridge
+    /// @param chain The name of the chain
+    function removeSupportedChain(string memory chain) external onlyAdmin {
+        supportedChains[chain] = false;
     }
 
-    function _calcFee(uint _amount) private view returns(uint) {
-        return _amount * feeRate / MAX_BP;
-    }
-
-    function withdraw(address _token, uint _amount) external onlyAdmin {
-        require(feeTokenAndAmount[_token] != 0, "Invalid token");
-        require(feeTokenAndAmount[_token] >= _amount, "Incorrect amount");
-        if (_token != address(0)) {
-            IERC20(_token).safeTransfer(_msgSender(), _amount);
-        } else {
-            (bool success, ) = _msgSender().call{ value: _amount }("");
-        }
-        feeTokenAndAmount[_token] -= _amount;
-    }
-
-    function setSupportedChain(string memory _chain) external onlyAdmin {
-        supportedChains[_chain] = true;
-    }
-
-    function removeSupportedChain(string memory _chain) external onlyAdmin {
-        supportedChains[_chain] = false;
-    }
-
+    /// @dev Verifies that a signature of PERMIT_DIGEST is valid
+    /// @param nonce Prevent replay attacks
+    /// @param amount The amount of tokens if the digest
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @param msgSender The address of account on another chain
     function signatureVerification(
-        uint256 _nonce,
-        uint256 _amount,
+        uint256 nonce,
+        uint256 amount,
         uint8 v,
         bytes32 r,
         bytes32 s,
-        bytes32 _domainSeparator,
-        address _msgSender
+        address token,
+        address msgSender
     ) internal {
-            require(!nonces[_nonce], "Request already processed");
+            require(!nonces[nonce], "Bridge: request already processed!");
 
             bytes32 permitDigest = getPermitDigest(
-                _domainSeparator,
-                _msgSender,
-                _amount,
-                _nonce
+                token,
+                msgSender,
+                amount,
+                nonce
             );
 
+            // Recover the signer of the PERMIT_DIGEST
             address signer = ecrecover(permitDigest, v, r, s);
-            require(signer == botMessenger, "Invalid signature");
+            // Compare the recover and the required signer
+            require(signer == botMessenger, "Bridge: invalid signature!");
 
-            nonces[_nonce] = true;
+            nonces[nonce] = true;
     }
 
+    /// @dev One of the nested functions for signature verification
     function getPermitDigest(
-        bytes32 _domainSeparator,
-        address _to,
-        uint256 _amount,
-        uint256 _nonce
-    ) internal pure returns (bytes32) {
-        return
-        keccak256(
+        address token,
+        address receiver,
+        uint256 amount,
+        uint256 nonce
+    ) internal view returns (bytes32) {
+        bytes32 domainSeparator = getDomainSeparator(token, "1", block.chainid, address(this));
+        bytes32 typeHash = getPermitTypeHash(receiver, amount, nonce);
+
+        bytes32 permitDigest = keccak256(
             abi.encodePacked(
                 uint16(0x1901),
-                _domainSeparator,
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "Permit(address spender,uint256 value,uint256 nonce)"
-                        ),
-                        _to,
-                        _amount,
-                        _nonce
-                    )
-                )
+                domainSeparator,
+                typeHash
             )
         );
+
+        return permitDigest;
+    }
+
+    /// @dev Calculates DOMAIN_SEPARATOR of the token
+    function getDomainSeparator(
+        address _token,
+        string memory version,
+        uint256 chainid, 
+        address verifyingAddress
+    ) internal view returns (bytes32) {
+        require(_token != address(0), "Bridge: invalid address of transfered token!");
+
+        WrappedERC20 token = WrappedERC20(_token);
+        
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainid,address verifyingContract)"
+                ),
+                // Token name
+                keccak256(bytes(token.name())),
+                // Version
+                keccak256(bytes(version)),
+                // ChainID
+                chainid,
+                // Verifying contract
+                verifyingAddress
+            )
+        );
+
+        return domainSeparator;
+    }
+
+
+    /// @dev One of the nested functions for signature verification
+    function getPermitTypeHash(
+        address to,
+        uint256 amount,
+        uint256 nonce
+    ) internal pure returns (bytes32) {
+
+        bytes32 permitHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "Permit(address spender,uint256 value,uint256 nonce)"
+                ),
+                to,
+                amount,
+                nonce
+            )
+        );
+
+        return permitHash;
     }
 
 }

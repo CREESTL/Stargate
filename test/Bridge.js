@@ -22,13 +22,13 @@ describe('Bridge', () => {
     beforeEach(async () => {
         // provider = ethers.getDefaultProvider();
         [owner, client, fee] = await ethers.getSigners();
-        const BridgeTokenStandardERC20 = await ethers.getContractFactory("BridgeTokenStandardERC20");
-        const FactoryBridgeTokenStandardERC20 = await ethers.getContractFactory("FactoryBridgeTokenStandardERC20");
+        const WrappedERC20 = await ethers.getContractFactory("WrappedERC20");
+        const WrappedERC20 = await ethers.getContractFactory("WrappedERC20");
         const Bridge = await ethers.getContractFactory("Bridge");
 
-        tokenStandart = await BridgeTokenStandardERC20.deploy();
+        tokenStandart = await WrappedERC20.deploy();
         bridge = await Bridge.deploy(tokenStandart.address, bot_messenger.address, 3);
-        factoryToken = await FactoryBridgeTokenStandardERC20.deploy(tokenStandart.address, bridge.address);
+        factoryToken = await WrappedERC20.deploy(tokenStandart.address, bridge.address);
         // loadFixture = createFixtureLoader(
         //     await ethers.getSigners(),
         //     provider
@@ -51,7 +51,7 @@ describe('Bridge', () => {
         it('burn token', async() => {
             await factoryToken.connect(owner).createNewToken("TestToken1", "TT1", 8);
             [address1] = await factoryToken.getAllowedTokens();
-            token1 = await ethers.getContractAt('IBridgeTokenStandardERC20', address1);
+            token1 = await ethers.getContractAt('IWrappedERC20', address1);
             let amount = ethers.utils.parseEther('1000');
             let amountWithoutFee = ethers.utils.parseEther('997');
             //chainId = 1 for Ethereum mainnet
@@ -74,7 +74,7 @@ describe('Bridge', () => {
         it('mintWithPermit function', async() => {
             await factoryToken.createNewToken("TestToken1", "TT1", 8);
             [address1] = await factoryToken.getAllowedTokens();
-            token1 = await ethers.getContractAt('IBridgeTokenStandardERC20', address1);
+            token1 = await ethers.getContractAt('IWrappedERC20', address1);
 
             DOMAIN_SEPARATOR = getDomainSeparator((await token1.name()), '1', chainId, bridge.address);
             const permitDigest = getPermitDigest(DOMAIN_SEPARATOR, client.address, ethers.utils.parseEther('1000'), 0);
@@ -186,14 +186,14 @@ describe('Bridge', () => {
     });
     describe("Bridge other functions", function () {
         it('setBridgedStandardERC20 function', async() => {
-            const BridgeTokenStandardERC20Other = await ethers.getContractFactory("BridgeTokenStandardERC20");
-            const FactoryBridgeTokenStandardERC20Other = await ethers.getContractFactory("FactoryBridgeTokenStandardERC20");
-            tokenStandart2 = await BridgeTokenStandardERC20Other.deploy();
-            factoryToken2 = await FactoryBridgeTokenStandardERC20Other.deploy(tokenStandart2.address, bridge.address);
+            const WrappedERC20Other = await ethers.getContractFactory("WrappedERC20");
+            const WrappedERC20Other = await ethers.getContractFactory("WrappedERC20");
+            tokenStandart2 = await WrappedERC20Other.deploy();
+            factoryToken2 = await WrappedERC20Other.deploy(tokenStandart2.address, bridge.address);
 
-            expect(await bridge.bridgeStandardERC20()).to.be.equal(tokenStandart.address);
+            expect(await bridge.wrappedToken()).to.be.equal(tokenStandart.address);
             await bridge.setBridgedStandardERC20(tokenStandart2.address);
-            expect(await bridge.bridgeStandardERC20()).to.be.equal(tokenStandart2.address);
+            expect(await bridge.wrappedToken()).to.be.equal(tokenStandart2.address);
 
             await expect(bridge.connect(client).setBridgedStandardERC20(tokenStandart2.address))
                 .to.revertedWith("onlyAdmin");

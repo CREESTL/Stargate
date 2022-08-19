@@ -8,12 +8,12 @@ describe('FactoryAndToken', () => {
   var factoryToken;
   beforeEach( async () => {
     [owner, client] = await ethers.getSigners();
-    const BridgeTokenStandardERC20 = await ethers.getContractFactory("BridgeTokenStandardERC20");
-    const FactoryBridgeTokenStandardERC20 = await ethers.getContractFactory("FactoryBridgeTokenStandardERC20");
+    const WrappedERC20 = await ethers.getContractFactory("WrappedERC20");
+    const WrappedERC20 = await ethers.getContractFactory("WrappedERC20");
     const BridgeMock = await ethers.getContractFactory("BridgeMock");
     bridgeMock = await BridgeMock.deploy();
-    tokenStandart = await BridgeTokenStandardERC20.deploy();
-    factoryToken = await FactoryBridgeTokenStandardERC20.deploy(tokenStandart.address, bridgeMock.address);
+    tokenStandart = await WrappedERC20.deploy();
+    factoryToken = await WrappedERC20.deploy(tokenStandart.address, bridgeMock.address);
   });
   describe("Creating a new token through the factory", function () {
 
@@ -23,8 +23,8 @@ describe('FactoryAndToken', () => {
 
       [address1, address2] = await factoryToken.getAllowedTokens();
 
-      nt1 = await ethers.getContractAt('IBridgeTokenStandardERC20', address1);
-      nt2 = await ethers.getContractAt('IBridgeTokenStandardERC20', address2);
+      nt1 = await ethers.getContractAt('IWrappedERC20', address1);
+      nt2 = await ethers.getContractAt('IWrappedERC20', address2);
 
       expect(await nt1.name()).to.be.equal("Test Token 1");
       expect(await nt1.symbol()).to.be.equal("TT1");
@@ -52,16 +52,16 @@ describe('FactoryAndToken', () => {
     });
 
     it('Set functions', async() => {
-      const TestBridge = await ethers.getContractFactory("BridgeTokenStandardERC20");
+      const TestBridge = await ethers.getContractFactory("WrappedERC20");
       testBridge = await TestBridge.deploy();
       expect(await factoryToken.bridge()).to.be.equal(bridgeMock.address);
       await factoryToken.setBridge(testBridge.address);
       expect(await factoryToken.bridge()).to.be.equal(testBridge.address);
 
-      const TestBridgeTokenStandardERC20 = await ethers.getContractFactory("BridgeTokenStandardERC20");
-      testTokenStandart = await TestBridgeTokenStandardERC20.deploy();
+      const TestWrappedERC20 = await ethers.getContractFactory("WrappedERC20");
+      testTokenStandart = await TestWrappedERC20.deploy();
       expect(await factoryToken.bridgeTokenStandard()).to.be.equal(tokenStandart.address);
-      await factoryToken.setBridgeTokenStandardERC20(testTokenStandart.address);
+      await factoryToken.setWrappedERC20(testTokenStandart.address);
       expect(await factoryToken.bridgeTokenStandard()).to.be.equal(testTokenStandart.address);
     });
   });
@@ -69,17 +69,17 @@ describe('FactoryAndToken', () => {
   describe("Checking admin functions", function () {
 
     it('Set functions', async() => {
-      const TestBridge = await ethers.getContractFactory("BridgeTokenStandardERC20");
+      const TestBridge = await ethers.getContractFactory("WrappedERC20");
       testBridge = await TestBridge.deploy();
       expect(await factoryToken.bridge()).to.be.equal(bridgeMock.address);
       await expect(factoryToken.connect(client).setBridge(testBridge.address))
           .to.be.revertedWith("onlyAdmin");
       expect(await factoryToken.bridge()).to.be.equal(bridgeMock.address);
 
-      const TestBridgeTokenStandardERC20 = await ethers.getContractFactory("BridgeTokenStandardERC20");
-      testTokenStandart = await TestBridgeTokenStandardERC20.deploy();
+      const TestWrappedERC20 = await ethers.getContractFactory("WrappedERC20");
+      testTokenStandart = await TestWrappedERC20.deploy();
       expect(await factoryToken.bridgeTokenStandard()).to.be.equal(tokenStandart.address);
-      await expect(factoryToken.connect(client).setBridgeTokenStandardERC20(testTokenStandart.address))
+      await expect(factoryToken.connect(client).setWrappedERC20(testTokenStandart.address))
           .to.be.revertedWith("onlyAdmin");
       expect(await factoryToken.bridgeTokenStandard()).to.be.equal(tokenStandart.address);
     });
@@ -110,7 +110,7 @@ describe('FactoryAndToken', () => {
       await factoryToken.createNewToken("Test Token 1", "TT1", 8);
 
       [address1] = await factoryToken.getAllowedTokens();
-      nt1 = await ethers.getContractAt('IBridgeTokenStandardERC20', address1);
+      nt1 = await ethers.getContractAt('IWrappedERC20', address1);
 
       expect(await nt1.balanceOf(client.address)).to.be.equal(0);
       await bridgeMock.mint(client.address, mintAmount, nt1.address);
@@ -123,7 +123,7 @@ describe('FactoryAndToken', () => {
       await factoryToken.createNewToken("Test Token 1", "TT1", 8);
 
       [address1] = await factoryToken.getAllowedTokens();
-      nt1 = await ethers.getContractAt('IBridgeTokenStandardERC20', address1);
+      nt1 = await ethers.getContractAt('IWrappedERC20', address1);
 
       expect(await nt1.balanceOf(client.address)).to.be.equal(0);
       await bridgeMock.mint(client.address, mintAmount, nt1.address);
