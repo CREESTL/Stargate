@@ -18,7 +18,7 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
     
     /// @dev Checks if the caller is the bridge contract
     modifier onlyBridge {
-        require(msg.sender == _bridge, "BridgeToken: caller is not a bridge!");
+        require(msg.sender == _bridge, "Token: caller is not a bridge!");
         _;
     }
 
