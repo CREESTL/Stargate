@@ -301,7 +301,7 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     /// @notice Calculates a fee for bridge operations
     /// @param amount An amount of tokens that were sent. The more tokens - the higher the fee
     /// @return The fee amount
-    function calcFee(uint256 amount) public view onlyAdmin returns(uint256) {
+    function calcFee(uint256 amount) public view returns(uint256) {
         return amount * feeRate / MAX_BP;
     }
 
@@ -371,7 +371,11 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
             nonces[nonce] = true;
     }
 
-    /// @dev One of the nested functions for signature verification
+    /// @dev Generates the digest that is used in signature verification
+    /// @param token The address of the token to be transfered
+    /// @param receiver The receiver of transfered tokens
+    /// @param amount The amount of tokens to be transfered
+    /// @param nonce Unique number to prevent replay
     function getPermitDigest(
         address token,
         address receiver,
@@ -392,11 +396,16 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
         return permitDigest;
     }
 
-    /// @dev Calculates DOMAIN_SEPARATOR of the token
+    /// @dev Generates domain separator of the token
+    /// @dev Used to generate permit digest afterwards
+    /// @param _token The address of the token to be transfered
+    /// @param version The version of separator
+    /// @param chainId The ID of the current chain
+    /// @param verifyingAddress The address of the contract that will verify the signature
     function getDomainSeparator(
         address _token,
         string memory version,
-        uint256 chainid, 
+        uint256 chainId, 
         address verifyingAddress
     ) internal view returns (bytes32) {
         require(_token != address(0), "Bridge: invalid address of transfered token!");
@@ -406,14 +415,14 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
         bytes32 domainSeparator = keccak256(
             abi.encode(
                 keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainid,address verifyingContract)"
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
                 // Token name
                 keccak256(bytes(token.name())),
                 // Version
                 keccak256(bytes(version)),
                 // ChainID
-                chainid,
+                chainId,
                 // Verifying contract
                 verifyingAddress
             )
@@ -423,9 +432,12 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     }
 
 
-    /// @dev One of the nested functions for signature verification
+    /// @dev Generates the type hash for permit digest
+    /// @param receiver The receiver of transfered tokens
+    /// @param amount The amount of tokens to be transfered
+    /// @param nonce Unique number to prevent replay
     function getPermitTypeHash(
-        address to,
+        address receiver,
         uint256 amount,
         uint256 nonce
     ) internal pure returns (bytes32) {
@@ -435,7 +447,7 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
                 keccak256(
                     "Permit(address spender,uint256 value,uint256 nonce)"
                 ),
-                to,
+                receiver,
                 amount,
                 nonce
             )
