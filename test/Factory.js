@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-const { BigNumber, bigNumberify } = require("ethers");
 const { ethers } = require("hardhat");
 const { expect } = require("chai");
-const { parseEther } = ethers.utils;
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 
@@ -26,6 +24,7 @@ describe('Factory', () => {
     factory = await factoryTx.deploy();
 
     await token.deployed();
+    await token.initialize("Integral", "SFXDX", 18, bridge.address);
     await factory.deployed();
     await bridge.deployed();
 
