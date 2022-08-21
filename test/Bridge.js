@@ -42,8 +42,9 @@ describe('Bridge', () => {
 
   });
 
-  describe("Bridge", function () {
-  	it('Should lock native tokens', async() => {
+  describe("Native Tokens", () => {
+
+  	it('Should lock and unlock native tokens', async() => {
 
   		let amount = ethers.utils.parseEther('1');
   		let fee = await bridge.calcFee(amount);
@@ -51,14 +52,119 @@ describe('Bridge', () => {
 
       await bridge.setSupportedChain("Ala");
 
-      await expect(await bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
+      // Transfer ether to the bridge and lock it there
+      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
         .to.emit(bridge, "Lock")
         // First three parameters are indexed (hashed) in the event, so their value is uknown 
         .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
+      // Unlock locked tokens
+      // NOTE We have to provide token name "Native" for **any** native token
+      let domain_separator = getDomainSeparator("Native", '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 0);
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call unlock method providing parts of the signature
+      await expect(bridge.connect(clientAcc1).unlockWithPermit(
+        addressZero,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "UnlockWithPermit").withArgs(anyValue, anyValue, amount);
     });
 
-    it('Should lock ERC20 tokens', async() => {
+    it('Should fail to lock native tokens if not enough tokens were sent', async() => {
+
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      await bridge.setSupportedChain("Ala");
+
+      // Set `value` to less than `sum`
+      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum.div(2)}))
+        .to.be.revertedWith("Bridge: not enough tokens to cover the fee!");
+    });
+
+    it('Should fail to unlock native tokens if not enough tokens on the bridge', async() => {
+
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      // We did not provide the bridge with any native tokens so far. So it can not send them back
+      let domain_separator = getDomainSeparator("Native", '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 0);
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      await expect(bridge.connect(clientAcc1).unlockWithPermit(
+        addressZero,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.be.revertedWith("Bridge: not enough native tokens on the bridge balance!");
+    });
+  });
+
+
+  describe("ERC20 Tokens", () => {
+    it('Should mint ERC20 tokens to users', async() => {
+
+      let amount = 10;
+
+      // The only way to mint bridge tokens is to use `mintWithPermit` method but it requires 
+      // a signature
+      let domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 0);
+      // Get the signature
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call mint method providing parts of the signature
+      await expect(bridge.connect(clientAcc1).mintWithPermit(
+        token.address,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "MintWithPermit").withArgs(token.address, clientAcc1.address, amount);
+
+    });
+
+    it('Should fail to mint ERC20 tokens with the same nonce', async() => {
+
+      let amount = 10;
+
+      // The only way to mint bridge tokens is to use `mintWithPermit` method but it requires 
+      // a signature
+      let domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      // Get digest with one nonce
+      let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 0);
+      // Get the signature
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call mint method providing parts of the signature
+      await bridge.connect(clientAcc1).mintWithPermit(
+        token.address,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      );
+      // Try to mint with the same nonce
+      await expect(bridge.connect(clientAcc1).mintWithPermit(
+        token.address,
+        amount,
+        0, // Same nonce
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.be.revertedWith("Bridge: request already processed!");
+
+    });
+
+    it('Should lock and unlock ERC20 tokens', async() => {
 
       let amount = 10;
       let fee = await bridge.calcFee(amount);
@@ -92,9 +198,59 @@ describe('Bridge', () => {
         // First three parameters are indexed (hashed) in the event, so their value is uknown 
         .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
+      // Unlock locked tokens
+      // NOTE When unlocking custom ERC20 tokens we have to provide token's name explicitly
+      domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 1);
+      signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call unlock method providing parts of the signature
+      await expect(bridge.connect(clientAcc1).unlockWithPermit(
+        token.address,
+        amount,
+        1,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "UnlockWithPermit").withArgs(anyValue, anyValue, amount);
     });
 
-  it('Should burn ERC20 tokens', async() => {
+    it('Should fail to lock ERC20 tokens if sender does not have enough tokens', async() => {
+
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      await bridge.setSupportedChain("Ala");
+      // Let bridge transfer tokens from client to bridge
+      await token.connect(clientAcc1).increaseAllowance(bridge.address, sum);
+
+      // We did not provide the caller (client) with any ERC tokens so far. So the bridge can not 
+      // tranfer them from user's adrress fo the bridge itself
+      await expect(bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
+        .to.be.revertedWith("ERC20: transfer amount exceeds balance");
+    });
+
+    it('Should fail to unlock ERC20 tokens if not enough tokens on the bridge', async() => {
+
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      // We did not provide the bridge with any native tokens so far. So it can not send them back
+      let domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 0);
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      await expect(bridge.connect(clientAcc1).unlockWithPermit(
+        token.address,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.be.revertedWith("Bridge: not enough ERC20 tokens on the bridge balance!");
+    });
+
+    it('Should burn ERC20 tokens', async() => {
 
       let amount = 10;
       let fee = await bridge.calcFee(amount);
@@ -120,240 +276,247 @@ describe('Bridge', () => {
         signature.r,
         signature.s
       );
-      await expect(await bridge.connect(clientAcc1).burn(token.address, amount, clientAcc1.address, "ETH"))
+      await expect(bridge.connect(clientAcc1).burn(token.address, amount, clientAcc1.address, "ETH"))
         .to.emit(bridge, "Burn")
         // First three parameters are indexed (hashed) in the event, so their value is uknown 
         .withArgs(anyValue, anyValue, anyValue, amount, "ETH");
 
     });
-  // 	it('burn token', async() => {
-  // 		await factoryToken.connect(owner).createNewToken("TestToken1", "TT1", 8);
-  // 		[address1] = await factoryToken.getAllowedTokens();
-  // 		token1 = await ethers.getContractAt('IWrappedERC20', address1);
-  // 		let amount = ethers.utils.parseEther('1000');
-  // 		let amountWithoutFee = ethers.utils.parseEther('997');
-  //       //chainId = 1 for Ethereum mainnet
-  //       DOMAIN_SEPARATOR = getDomainSeparator((await token1.name()), '1', chainId, bridge.address);
-  //       const permitDigest = getPermitDigest(DOMAIN_SEPARATOR, client.address, amount, 0);
-  //       let sign = getSignatureWithPermit(permitDigest, bot_messenger);
 
-  //       await bridge.setAllowedToken(token1.address, "");
-  //       await bridge.setSupportedChain("Ala");
+    it('Should fail to burn ERC20 tokens not enough tokens on the bridge', async() => {
 
-  //       await bridge.connect(client).mintWithPermit(token1.address, amount, 0, sign.v, sign.r, sign.s);
+      let amount = 10;
+      let fee = await bridge.calcFee(amount);
+      let sum = amount + fee;
 
-  //       await token1.connect(client).approve(bridge.address, amount);
-  //       await expect(bridge.connect(client).burn(token1.address, "0x07B0C0f1EE1eC64A80293A1698Eb73C77E54Aae9", amount, "BSC"))
-  //       .to.revertedWith("Not supported");
+      await bridge.setSupportedChain("ETH");
+      // Let bridge transfer tokens from client to bridge
+      await token.connect(clientAcc1).increaseAllowance(bridge.address, sum);
 
-  //       await expect(bridge.connect(client).burn(token1.address, "0x07B0C0f1EE1eC64A80293A1698Eb73C77E54Aae9", amount, "Ala"))
-  //       .to.emit(bridge, "Burn").withArgs(token1.address, client.address, "0x07B0C0f1EE1eC64A80293A1698Eb73C77E54Aae9", amountWithoutFee, "Ala");
-  //     });
-  // 	it('mintWithPermit function', async() => {
-  // 		await factoryToken.createNewToken("TestToken1", "TT1", 8);
-  // 		[address1] = await factoryToken.getAllowedTokens();
-  // 		token1 = await ethers.getContractAt('IWrappedERC20', address1);
+      await expect(bridge.connect(clientAcc1).burn(token.address, amount, clientAcc1.address, "ETH"))
+        .to.be.revertedWith("ERC20: transfer amount exceeds balance");
 
-  // 		DOMAIN_SEPARATOR = getDomainSeparator((await token1.name()), '1', chainId, bridge.address);
-  // 		const permitDigest = getPermitDigest(DOMAIN_SEPARATOR, client.address, ethers.utils.parseEther('1000'), 0);
-  // 		let sign = getSignatureWithPermit(permitDigest, bot_messenger);
-
-  // 		await bridge.setAllowedToken(address1, "");
-
-  // 		await expect(bridge.connect(client).mintWithPermit(
-  // 			token1.address,
-  // 			ethers.utils.parseEther('2000'),
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s)).to.revertedWith("Invalid signature");
-
-  // 		await expect(bridge.connect(owner).mintWithPermit(
-  // 			token1.address,
-  // 			ethers.utils.parseEther('1000'),
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s)).to.revertedWith("Invalid signature");
-
-  // 		expect(await bridge.connect(client).mintWithPermit(
-  // 			token1.address,
-  // 			ethers.utils.parseEther('1000'),
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s
-  // 			)).to.emit(bridge, "MintWithPermit").withArgs(token1.address, client.address, ethers.utils.parseEther('1000'));
-
-  // 		await expect(bridge.connect(client).mintWithPermit(
-  // 			token1.address,
-  // 			ethers.utils.parseEther('1000'),
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s)).to.revertedWith("Request already processed");
+    });
+  });
 
 
-  // 		expect(await token1.balanceOf(client.address)).to.be.equal(ethers.utils.parseEther('1000'));
-  // 	});
-  // 	it('unlockWithPermit token function', async() => {
+  describe("Full Flow", () => {
 
-  // 		const amount = ethers.utils.parseEther('100');
-  // 		const TokenLock = await ethers.getContractFactory("TokenMock");
-  // 		var tokenLock = await TokenLock.deploy("TokenLock", "TL", amount, bridge.address);
+   it('Should lock native tokens and mint ERC20 tokens', async() => {
 
-  // 		DOMAIN_SEPARATOR = getDomainSeparator((await tokenLock.name()), '1', chainId, bridge.address);
-  // 		const permitDigest = getPermitDigest(DOMAIN_SEPARATOR, client.address, amount, 0);
-  // 		let sign = getSignatureWithPermit(permitDigest, bot_messenger);
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
 
-  // 		await bridge.setAllowedToken(tokenLock.address, "");
-  // 		expect(await bridge.connect(client).unlockWithPermit(
-  // 			tokenLock.address,
-  // 			amount,
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s)).to.emit(bridge, "UnlockWithPermit")
-  // 		.withArgs(tokenLock.address, client.address, amount);
+      await bridge.setSupportedChain("Ala");
 
-  // 		await expect(bridge.connect(client).unlockWithPermit(
-  // 			tokenLock.address,
-  // 			amount,
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s)).to.revertedWith("Request already processed");
-  // 	});
+      // Transfer ether to the bridge and lock it there
+      // Use clientAcc1 here
+      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
+        .to.emit(bridge, "Lock")
+        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
-  // 	it('unlockWithPermit ETH function', async() => {
-  // 		const amount = ethers.utils.parseEther('1');
-  // 		const amountUnlock = ethers.utils.parseEther('0.5');
-  // 		await bridge.setAllowedToken(ethers.constants.AddressZero, "Ethereum");
-  // 		await bridge.setSupportedChain("Ala");
-  // 		await bridge.connect(client).lock(ethers.constants.AddressZero, "0x07B0C0f1EE1eC64A80293A1698Eb73C77E54Aae9", 0, "Ala", {value: ethers.utils.parseEther("10")});
+      // Mint ERC20 tokens
+      // NOTE This should happen on the other chain for another client's account
+      // Use clientAcc2 here
+      let domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc2.address, amount, 0);
+      // Get the signature
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call mint method providing parts of the signature
+      await expect(bridge.connect(clientAcc2).mintWithPermit(
+        token.address,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "MintWithPermit").withArgs(token.address, clientAcc2.address, amount);
+      
+    });
 
-  // 		DOMAIN_SEPARATOR = getDomainSeparator("Ethereum", '1', chainId, bridge.address);
-  // 		const permitDigest = getPermitDigest(DOMAIN_SEPARATOR, client.address, amountUnlock, 0);
-  // 		let sign = getSignatureWithPermit(permitDigest, bot_messenger);
+    it('Should lock ERC20 tokens and mint ERC20 tokens', async() => {
 
-  // 		expect(await bridge.connect(client).unlockWithPermit(
-  // 			ethers.constants.AddressZero,
-  // 			amountUnlock,
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s)).to.emit(bridge, "UnlockWithPermit")
-  // 		.withArgs(ethers.constants.AddressZeroaddress, client.address, amountUnlock);
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
 
-  // 		await expect(bridge.connect(client).unlockWithPermit(
-  // 			ethers.constants.AddressZero,
-  // 			amount,
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s)).to.revertedWith("Request already processed");
+      await bridge.setSupportedChain("Ala");
 
-  // 		await expect(bridge.connect(owner).mintWithPermit(
-  // 			ethers.constants.AddressZero,
-  // 			amount,
-  // 			0,
-  // 			sign.v,
-  // 			sign.r,
-  // 			sign.s)).to.revertedWith("Invalid signature");
-  // 	});
-		// it('setBridgedStandardERC20 function', async() => {
-		// 	const WrappedERC20Other = await ethers.getContractFactory("WrappedERC20");
-		// 	tokenStandart2 = await WrappedERC20Other.deploy();
-		// 	factoryToken2 = await WrappedERC20Other.deploy(tokenStandart2.address, bridge.address);
+      // Let bridge transfer tokens from client to bridge
+      await token.connect(clientAcc1).increaseAllowance(bridge.address, sum);
 
-		// 	expect(await bridge.wrappedToken()).to.be.equal(tokenStandart.address);
-		// 	await bridge.setBridgedStandardERC20(tokenStandart2.address);
-		// 	expect(await bridge.wrappedToken()).to.be.equal(tokenStandart2.address);
+      // Send some tokens to the client
+      let domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, sum, 0);
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      await bridge.connect(clientAcc1).mintWithPermit(
+        token.address,
+        sum,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      );
 
-		// 	await expect(bridge.connect(client).setBridgedStandardERC20(tokenStandart2.address))
-		// 	.to.revertedWith("onlyAdmin");
-		// 	await expect(bridge.setBridgedStandardERC20(ethers.constants.AddressZero))
-		// 	.to.revertedWith("The address is null");
+      // Lock client's ERC20 tokens
+      await expect(await bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
+        .to.emit(bridge, "Lock")
+        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
-		// });
-		// it('allowedToken function', async() => {
-		// 	const TokenLock = await ethers.getContractFactory("TokenMock");
-		// 	var tokenLock = await TokenLock.deploy("TokenLock", "TL", 100000, bridge.address);
-		// 	DOMAIN_SEPARATOR = getDomainSeparator((await tokenLock.name()), '1', chainId, bridge.address);
-		// 	DOMAIN_SEPARATOR_ETH = getDomainSeparator(("Ethereum"), '1', chainId, bridge.address);
-		// 	console.log(hre.network.config.chainId);
-		// 	await bridge.setAllowedToken(tokenLock.address, "");
+      // Mint ERC20 tokens
+      // NOTE This should happen on the other chain for another client's account
+      // Use clientAcc2 here
+      domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      permitDigest = getPermitDigest(domain_separator, clientAcc2.address, amount, 1);
+      // Get the signature
+      signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call mint method providing parts of the signature
+      await expect(bridge.connect(clientAcc2).mintWithPermit(
+        token.address,
+        amount,
+        1,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "MintWithPermit").withArgs(token.address, clientAcc2.address, amount);;
+      
+    });
 
-		// 	await expect(bridge.connect(client).setAllowedToken(tokenLock.address, ""))
-		// 	.to.revertedWith("onlyAdmin");
 
-		// 	expect(await bridge.allowedTokens(tokenLock.address)).to.be.equal(DOMAIN_SEPARATOR);
+    it('Should lock(native), mint(ERC20), burn(ERC20), unlock(native)', async() => {
 
-		// 	await bridge.setAllowedToken(ethers.constants.AddressZero, "Ethereum");
-		// 	expect(await bridge.allowedTokens(ethers.constants.AddressZero))
-		// 	.to.be.equal(DOMAIN_SEPARATOR_ETH);
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
 
-		// 	await expect(bridge.setAllowedToken(ethers.constants.AddressZero, ""))
-		// 	.to.revertedWith("Name is empty");
+      await bridge.setSupportedChain("Ala");
+      await bridge.setSupportedChain("ETH");
 
-		// 	await bridge.removeAllowedToken(tokenLock.address);
-		// 	expect(await bridge.allowedTokens(tokenLock.address))
-		// 	.to.be.equal(ethers.utils.hexZeroPad(ethers.utils.hexlify(0), 32));
-		// });
+      // Lock native tokens
+      await expect(bridge.connect(clientAcc1).lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
+        .to.emit(bridge, "Lock")
+        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
-		// it('setFeeRate function', async() => {
-		// 	await expect(bridge.connect(client).setFeeRate(10)).to.revertedWith("onlyAdmin");
-		// 	await expect(bridge.setFeeRate(1000000)).to.revertedWith("Out of range");
-		// 	await expect(bridge.setFeeRate(0)).to.revertedWith("Out of range");
+      // Mint ERC20 tokens
+      // NOTE This should happen on the other chain for another client's account
+      // Use clientAcc2 here
+      let domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc2.address, sum, 0);
+      // Get the signature
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call mint method providing parts of the signature
+      await expect(bridge.connect(clientAcc2).mintWithPermit(
+        token.address,
+        sum, // Usually `amount` should be minted, but to burn tokens, client has to pay fees again
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "MintWithPermit").withArgs(token.address, clientAcc2.address, sum);
 
-		// 	await bridge.setFeeRate(100);
-		// 	expect(await bridge.feeRate()).to.be.equal(100);
-		// });
+      
+      // Burn minted ERC20 tokens
+      // NOTE This should happen on the other chain for another client's account
+      // Let bridge transfer tokens from client to bridge
+      await token.connect(clientAcc2).increaseAllowance(bridge.address, sum);
 
-		// it('SupportedChain function', async() => {
-		// 	await expect(bridge.connect(client).setSupportedChain("BSC")).to.revertedWith("onlyAdmin");
+      // Caller pays extra fee to burn tokens. That is why `sum` but not `amount` was minted to him previously
+      await expect(bridge.connect(clientAcc2).burn(token.address, amount, clientAcc1.address, "ETH"))
+        .to.emit(bridge, "Burn")
+        // First three parameters are indexed (hashed) in the event, so their value is uknown 
+        .withArgs(anyValue, anyValue, anyValue, amount, "ETH");
 
-		// 	expect(await bridge.supportedChains("BSC")).to.be.false;
-		// 	await bridge.setSupportedChain("BSC");
-		// 	expect(await bridge.supportedChains("BSC")).to.be.true;
+      // Unlock locked native tokens
+      // NOTE We have to provide token name "Native" for **any** native token
+      domain_separator = getDomainSeparator("Native", '1', chainId, bridge.address);
+      permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 1);
+      signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      await expect(bridge.connect(clientAcc1).unlockWithPermit(
+        addressZero,
+        amount,
+        1,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "UnlockWithPermit").withArgs(anyValue, anyValue, amount);
+    });
 
-		// 	await bridge.removeSupportedChain("BSC");
-		// 	expect(await bridge.supportedChains("BSC")).to.be.false;
-		// });
+    it('Should lock(ERC20), mint(ERC20), burn(ERC20), unlock(ERC20)', async() => {
 
-		// it('Withdraw function', async() => {
+      let amount = 10;
+      let fee = await bridge.calcFee(amount);
+      let sum = amount + fee;
 
-		// 	var amount = ethers.utils.parseEther('10');
-		// 	await bridge.setAllowedToken(ethers.constants.AddressZero, "Ethereum");
+      await bridge.setSupportedChain("Ala");
+      await bridge.setSupportedChain("ETH");
 
-		// 	const TokenLock = await ethers.getContractFactory("TokenMock");
-		// 	var tokenLock = await TokenLock.deploy("TokenLock", "TL", amount, owner.address);
-		// 	await bridge.setAllowedToken(tokenLock.address, "");
+      // First mint some ERC20 tokens to the client
+      await token.connect(clientAcc1).increaseAllowance(bridge.address, sum);
+      let domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, sum, 0);
+      // Get the signature
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call mint method providing parts of the signature
+      await bridge.connect(clientAcc1).mintWithPermit(
+        token.address,
+        sum,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      );
 
-		// 	await bridge.setSupportedChain("Ala");
-		// 	await expect(bridge.withdraw(tokenLock.address, ethers.utils.parseEther('0.03'))).to.revertedWith("Invalid token");
+      // Lock minted ERC20 tokens
+      // Call from the same address as in the signature!
+      await expect(await bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
+        .to.emit(bridge, "Lock")
+        // First three parameters are indexed (hashed) in the event, so their value is uknown 
+        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
-		// 	await bridge.lock(
-		// 		ethers.constants.AddressZero,
-		// 		"0x07B0C0f1EE1eC64A80293A1698Eb73C77E54Aae9",
-		// 		0,
-		// 		"Ala",
-		// 		{value: ethers.utils.parseEther("10")})
 
-		// 	await tokenLock.approve(bridge.address, amount);
-		// 	await bridge.lock(
-		// 		tokenLock.address,
-		// 		"0x07B0C0f1EE1eC64A80293A1698Eb73C77E54Aae9",
-		// 		amount,
-		// 		"Ala");
+      // Mint ERC20 tokens
+      // NOTE This should happen on the other chain for another client's account
+      // Use clientAcc2 here
+      domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      permitDigest = getPermitDigest(domain_separator, clientAcc2.address, sum, 1);
+      // Get the signature
+      signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      // Call mint method providing parts of the signature
+      await expect(bridge.connect(clientAcc2).mintWithPermit(
+        token.address,
+        sum, // Usually `amount` should be minted, but to burn tokens, client has to pay fees again
+        1,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "MintWithPermit").withArgs(token.address, clientAcc2.address, sum);
 
-		// 	await expect(bridge.withdraw(tokenLock.address, ethers.utils.parseEther('1'))).to.revertedWith("Incorrect amount");
+      
+      // Burn minted ERC20 tokens
+      // NOTE This should happen on the other chain for another client's account
+      // Let bridge transfer tokens from client to bridge
+      await token.connect(clientAcc2).increaseAllowance(bridge.address, sum);
 
-	 //        // var balanceOwner = await ethers.provider.getBalance(owner.address)
-	 //        await bridge.withdraw(tokenLock.address, ethers.utils.parseEther('0.03'));
-	 //        await bridge.withdraw(ethers.constants.AddressZero, ethers.utils.parseEther('0.03'));
+      // Caller pays extra fee to burn tokens. That is why `sum` but not `amount` was minted to him previously
+      await expect(bridge.connect(clientAcc2).burn(token.address, amount, clientAcc1.address, "ETH"))
+        .to.emit(bridge, "Burn")
+        // First three parameters are indexed (hashed) in the event, so their value is uknown 
+        .withArgs(anyValue, anyValue, anyValue, amount, "ETH");
 
-	 //        expect(await tokenLock.balanceOf(owner.address)).to.be.equal(ethers.utils.parseEther('0.03'));
-	 //      });
-		});
+      // Unlock locked tokens
+      // NOTE When unlocking custom ERC20 tokens we have to provide token's name explicitly
+      domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 2);
+      signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      await expect(bridge.connect(clientAcc1).unlockWithPermit(
+        token.address,
+        amount,
+        2,
+        signature.v,
+        signature.r,
+        signature.s
+      )).to.emit(bridge, "UnlockWithPermit").withArgs(anyValue, anyValue, amount);
+    });
+  });
 });
