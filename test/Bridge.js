@@ -543,7 +543,121 @@ describe('Bridge', () => {
       let amount = ethers.utils.parseUnits("10", 18);
       let expectedFee = amount.mul(feeRateBp).div(precentDenominator);
       expect(await bridge.calcFee(amount)).to.equal(expectedFee);
+      // Now try to use a very low amount. Should fail
+      amount = 1;
+      await expect(bridge.calcFee(amount))
+      .to.be.revertedWith("Bridge: transaction amount too low for fees!");
     });
 
+    it('Should collect fees from native token transactions', async() => {
+
+      // First we lock some native tokens
+      // Transaction of 10 ether should collect 0.03 ether in fees
+      let amount = ethers.utils.parseEther("10");
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      await bridge.setSupportedChain("Ala");
+
+      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
+        .to.emit(bridge, "Lock")
+        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+
+      // Then try to collect fees
+      let feeToWithDraw = ethers.utils.parseEther("0.03");
+
+      await expect(bridge.withdraw(addressZero, feeToWithDraw))
+        .to.emit(bridge, "Withdraw")
+        .withArgs(anyValue, anyValue, feeToWithDraw);
+
+    });
+
+    it('Should fail to collect fees from native token with no transactions ', async() => {
+
+      // Collect fees right away
+      let feeToWithDraw = ethers.utils.parseEther("0.03");
+
+      await expect(bridge.withdraw(addressZero, feeToWithDraw))
+        .to.be.revertedWith("Bridge: no fees were collected for this token!");
+
+    });
+
+    it('Should fail to collect too high fees ', async() => {
+
+      // First we lock some native tokens
+      // Transaction of 10 ether should collect 0.03 ether in fees
+      let amount = ethers.utils.parseEther("10");
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      await bridge.setSupportedChain("Ala");
+
+      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
+        .to.emit(bridge, "Lock")
+        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+
+      // Set an enormous amount of fees
+      let feeToWithDraw = ethers.utils.parseEther("1000");
+
+      await expect(bridge.withdraw(addressZero, feeToWithDraw))
+        .to.be.revertedWith("Bridge: amount of fees to withdraw is too large!");
+    });
+
+    it('Should collect fees from ERC20 token transactions', async() => {
+
+      // Mint some ERC20 tokens to the client
+      // Transaction of 10 tokens should collect 0.03 tokens in fee
+      let amount = ethers.utils.parseUnits("10", 18);
+      let fee = await bridge.calcFee(amount);
+      let sum = amount + fee;
+      await bridge.setSupportedChain("Ala");
+      await token.connect(clientAcc1).increaseAllowance(bridge.address, sum);
+      let domain_separator = getDomainSeparator((await token.name()), '1', chainId, bridge.address);
+      let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, sum, 0);
+      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      await bridge.connect(clientAcc1).mintWithPermit(
+        token.address,
+        sum,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+      );
+
+      // Lock tokens 
+      await expect(await bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
+        .to.emit(bridge, "Lock")
+        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+
+      // Then try to collect fees
+      let feeToWithDraw = ethers.utils.parseUnits("0.03", 18);
+
+      await expect(bridge.withdraw(token.address, feeToWithDraw))
+        .to.emit(bridge, "Withdraw")
+        .withArgs(anyValue, anyValue, feeToWithDraw);
+
+    });
+
+    it('Should add and remove supported chains', async() => {
+      
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      // Forbid transactions on Ala chain
+      await bridge.removeSupportedChain("Ala");
+
+      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
+        .to.be.revertedWith("Bridge: the chain is not supported!");
+
+      // Allow transactions on Ala chain
+      await bridge.setSupportedChain("Ala");
+
+      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
+        .to.emit(bridge, "Lock")
+        // First three parameters are indexed (hashed) in the event, so their value is uknown 
+        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+
+    });
   });
 });
