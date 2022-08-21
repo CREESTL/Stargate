@@ -16,7 +16,6 @@ import "hardhat/console.sol";
 /// @title A ERC20-ERC20 bridge contract
 contract Bridge is IBridge, AccessControl, ReentrancyGuard {
 
-    using SafeERC20 for IERC20;
     using SafeERC20 for IWrappedERC20;
 
     ///@dev Names of supported chains
@@ -408,27 +407,47 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
         uint256 chainId, 
         address verifyingAddress
     ) internal view returns (bytes32) {
-        require(_token != address(0), "Bridge: invalid address of transfered token!");
-
-        WrappedERC20 token = WrappedERC20(_token);
         
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ),
-                // Token name
-                keccak256(bytes(token.name())),
-                // Version
-                keccak256(bytes(version)),
-                // ChainID
-                chainId,
-                // Verifying contract
-                verifyingAddress
-            )
-        );
+        // Custom ERC20 tokens
+        if (_token != address(0)) {
 
-        return domainSeparator;
+            WrappedERC20 token = WrappedERC20(_token);
+            
+            return keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    ),
+                    // Token name
+                    keccak256(bytes(token.name())),
+                    // Version
+                    keccak256(bytes(version)),
+                    // ChainID
+                    chainId,
+                    // Verifying contract
+                    verifyingAddress
+                )
+            );
+
+        // Native tokens
+        } else {
+            
+            return keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    ),
+                    // NOTE This is a hardcoded name for any native token of the chain (ETH, MATIC, etc.)
+                    keccak256(bytes("Native")),
+                    // Version
+                    keccak256(bytes(version)),
+                    // ChainID
+                    chainId,
+                    // Verifying contract
+                    verifyingAddress
+                ) 
+            );   
+        }
     }
 
 
