@@ -323,11 +323,14 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
         // Custom token
         if (token != address(0)) {
             IWrappedERC20(token).safeTransfer(msg.sender, amount);
+
         // Native token
         } else {
             (bool success, ) = msg.sender.call{ value: amount }("");
             require(success, "Bridge: tokens withdrawal failed!");
         }
+
+        emit Withdraw(token, msg.sender, amount);
 
     }
 

@@ -125,4 +125,14 @@ interface IBridge {
         uint256 amount
     );
 
+    /// @notice Indicates that fees were withdrawn
+    /// @param token The address of the token (zero address for native token)
+    /// @param receiver Address of the wallet in the source chain
+    /// @param amount The amount of fees from a single token to be withdrawn
+    event Withdraw(
+        address indexed token,
+        address indexed receiver,
+        uint256 amount
+    );
+
 }
