@@ -30,8 +30,8 @@ describe('Bridge', () => {
   	let factoryTx = await ethers.getContractFactory("WrappedERC20Factory");
   	let bridgeTx = await ethers.getContractFactory("Bridge");
 
-    // Owner is a bot messenger. Fee rate is 1%
-    bridge = await bridgeTx.deploy(bot_messenger.address, 100);
+    // Owner is a bot messenger. 
+    bridge = await bridgeTx.deploy(bot_messenger.address);
     token = await tokenTx.deploy();
     factory = await factoryTx.deploy();
 
@@ -112,7 +112,7 @@ describe('Bridge', () => {
   describe("ERC20 Tokens", () => {
     it('Should mint ERC20 tokens to users', async() => {
 
-      let amount = 10;
+      let amount = ethers.utils.parseUnits("10", 12);
 
       // The only way to mint bridge tokens is to use `mintWithPermit` method but it requires 
       // a signature
@@ -134,7 +134,7 @@ describe('Bridge', () => {
 
     it('Should fail to mint ERC20 tokens with the same nonce', async() => {
 
-      let amount = 10;
+      let amount = ethers.utils.parseUnits("10", 12);
 
       // The only way to mint bridge tokens is to use `mintWithPermit` method but it requires 
       // a signature
@@ -166,7 +166,7 @@ describe('Bridge', () => {
 
     it('Should lock and unlock ERC20 tokens', async() => {
 
-      let amount = 10;
+      let amount = ethers.utils.parseUnits("10", 12);
       let fee = await bridge.calcFee(amount);
       let sum = amount + fee;
 
@@ -252,7 +252,7 @@ describe('Bridge', () => {
 
     it('Should burn ERC20 tokens', async() => {
 
-      let amount = 10;
+      let amount = ethers.utils.parseUnits("10", 12);
       let fee = await bridge.calcFee(amount);
       let sum = amount + fee;
 
@@ -285,7 +285,7 @@ describe('Bridge', () => {
 
     it('Should fail to burn ERC20 tokens not enough tokens on the bridge', async() => {
 
-      let amount = 10;
+      let amount = ethers.utils.parseUnits("10", 12);
       let fee = await bridge.calcFee(amount);
       let sum = amount + fee;
 
@@ -444,7 +444,7 @@ describe('Bridge', () => {
 
     it('Should lock(ERC20), mint(ERC20), burn(ERC20), unlock(ERC20)', async() => {
 
-      let amount = 10;
+      let amount = ethers.utils.parseUnits("10", 12);
       let fee = await bridge.calcFee(amount);
       let sum = amount + fee;
 
@@ -518,5 +518,32 @@ describe('Bridge', () => {
         signature.s
       )).to.emit(bridge, "UnlockWithPermit").withArgs(anyValue, anyValue, amount);
     });
+  });
+
+  describe("Helper Functions", async () => {
+
+    it('Should set new admin', async() => {
+      // Client does not have admin rights here
+      await expect(bridge.connect(clientAcc1).setSupportedChain("Ala"))
+      .to.be.revertedWith("Bridge: the caller is not an admin!");
+      await bridge.setAdmin(clientAcc1.address);
+      // Now he does
+      await bridge.connect(clientAcc1).setSupportedChain("Ala");
+    });
+
+    it('Should fail to set very high new fee rate', async() => {
+      // Try to set fee rate more than 100% (10_000 BP)
+      await expect(bridge.setFeeRate(10_100))
+      .to.be.revertedWith("Bridge: fee rate is too high!");
+    });
+
+    it('Should calculate fee amount correctly', async() => {
+      let precentDenominator = 10_000;
+      let feeRateBp = 30;
+      let amount = ethers.utils.parseUnits("10", 18);
+      let expectedFee = amount.mul(feeRateBp).div(precentDenominator);
+      expect(await bridge.calcFee(amount)).to.equal(expectedFee);
+    });
+
   });
 });

@@ -28,10 +28,17 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     bytes32 public constant BOT_MESSENGER_ROLE = keccak256("BOT_MESSENGER_ROLE");
     address public botMessenger;
 
-    /// @dev Maximum amount of basis points. Used to calculate final fee.
-    uint256 private constant MAX_BP = 1000;
-    /// @dev Fee rate. Used to calculate final fee. May be changed. 0.3 - 3%
-    uint256 public feeRate; 
+    /// @dev Fee rate. Used to calculate final fee. In basis points.
+    /// @dev 1 basis point = 1% / 100
+    /// @dev Default fee rate is 0.3% (30 BP)
+    uint256 private feeRateBp = 30; 
+    /// @dev Denominator used to convert fee into percents
+    /// @dev e.g. The msg.value is 50 tokens. The fee rate is 30 BP (0.3%)
+    /// @dev 50 * 30 = 1500 BP
+    /// @dev 1500 BP / 10 000 = 0.3%. Human readable.
+    uint256 private constant percentDenominator = 10_000;
+    /// @dev Fee can't be more than 100%
+    uint256 private constant maxFeeRateBp = 100 * 100;
 
     /// @dev Checks if caller is a messenger bot
     modifier onlyMessengerBot {
@@ -53,18 +60,14 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
 
     /// @notice Initializes internal variables, sets roles
     /// @param _botMessenger The address of bot messenger
-    /// @param _feeRate The fee rate in basis points
     constructor(
-        address _botMessenger,
-        uint256 _feeRate
+        address _botMessenger
     ) { 
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // The provided address gets a special role (used in signature verification)
         botMessenger = _botMessenger;
         _setupRole(BOT_MESSENGER_ROLE, botMessenger);
-
-        feeRate = _feeRate;
 
     }
 
@@ -291,17 +294,20 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     }
 
     /// @notice Sets a new fee rate for bridge operations
-    /// @param newFeeRate A new rate in basis points
-    function setFeeRate(uint256 newFeeRate) external onlyAdmin {
-        require(newFeeRate > 0 && newFeeRate <= MAX_BP, "Bridge: fee rate is too high!");
-        feeRate = newFeeRate;
+    /// @param newFeeRateBp A new rate in basis points
+    function setFeeRate(uint256 newFeeRateBp) external onlyAdmin {
+        require(newFeeRateBp > 0 && newFeeRateBp <= maxFeeRateBp, "Bridge: fee rate is too high!");
+        feeRateBp = newFeeRateBp;
     }
 
     /// @notice Calculates a fee for bridge operations
-    /// @param amount An amount of tokens that were sent. The more tokens - the higher the fee
-    /// @return The fee amount
+    /// @notice Fee can not be less than 1
+    /// @param amount An amount of tokens that were sent
+    /// @return The fee amount in atomic tokens of the chain (e.g. wei in Ethereum)
     function calcFee(uint256 amount) public view returns(uint256) {
-        return amount * feeRate / MAX_BP;
+        uint256 result = amount * feeRateBp / percentDenominator;
+        require(result >= 1, "Bridge: transaction amount too low for fees!");
+        return result;
     }
 
 

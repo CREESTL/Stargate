@@ -19,7 +19,7 @@ describe('Factory', () => {
     let factoryTx = await ethers.getContractFactory("WrappedERC20Factory");
     let bridgeTx = await ethers.getContractFactory("Bridge");
     // Owner is a bot messenger. Fee rate is 1%
-    bridge = await bridgeTx.deploy(owner.address, 100);
+    bridge = await bridgeTx.deploy(owner.address);
     token = await tokenTx.deploy();
     factory = await factoryTx.deploy();
 
