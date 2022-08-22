@@ -92,5 +92,5 @@ describe('Factory', () => {
     await expect(factory.getWrappedAddress("")).
       to.be.revertedWith("Factory: token name is too short!");    
 
-    });
+  });
 });
