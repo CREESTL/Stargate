@@ -97,9 +97,9 @@ contract WrappedERC20Factory is IWrappedERC20Factory {
         // Copy the template functionality and create a new token (proxy pattern)
         // This will create a new token on the same chain the factory is deployed on (target chain)
         address wrappedToken = Clones.clone(tokenTemplate);
-        WrappedERC20(wrappedToken).initialize(name, symbol, decimals, bridge);
         // Map the original token to the wrapped token 
         originalToWrappedTokens[originalToken] = wrappedToken;
+        WrappedERC20(wrappedToken).initialize(name, symbol, decimals, bridge);
 
         // And do the same backwards: map the wrapped token to the original token and original chain
         TokenInfo memory wrappedTokenInfo = TokenInfo(originalChain, originalToken);
