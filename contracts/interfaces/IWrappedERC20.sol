@@ -24,14 +24,14 @@ interface IWrappedERC20 is IERC20 {
     function bridge() external view returns(address);
 
     /// @notice Creates tokens and assigns them to account, increasing the total supply.
-    /// @param _to The receiver of tokens
-    /// @param _amount The amount of tokens to mint
-    function mint(address _to, uint256 _amount) external;
+    /// @param to The receiver of tokens
+    /// @param amount The amount of tokens to mint
+    function mint(address to, uint256 amount) external;
 
     /// @notice Destroys tokens from account, reducing the total supply.
-    /// @param _from The address holding the tokens
-    /// @param _amount The amount of tokens to burn
-    function burn(address _from, uint256 _amount) external;
+    /// @param from The address holding the tokens
+    /// @param amount The amount of tokens to burn
+    function burn(address from, uint256 amount) external;
 
     /// @notice Is emitted on every mint of the token
     event Mint(address indexed account, uint256 amount);
