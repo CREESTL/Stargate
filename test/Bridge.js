@@ -11,7 +11,6 @@ describe('Bridge', () => {
 	
 	// Constants to be used afterwards
 	let token;
-	let factory;
 	let bridge;
 	const addressZero = "0x0000000000000000000000000000000000000000";
 
@@ -27,17 +26,14 @@ describe('Bridge', () => {
   	[ownerAcc, clientAcc1, clientAcc2] = await ethers.getSigners();
 
   	let tokenTx = await ethers.getContractFactory("WrappedERC20");
-  	let factoryTx = await ethers.getContractFactory("WrappedERC20Factory");
   	let bridgeTx = await ethers.getContractFactory("Bridge");
 
     // Owner is a bot messenger. 
     bridge = await bridgeTx.deploy(bot_messenger.address);
     token = await tokenTx.deploy();
-    factory = await factoryTx.deploy();
 
     await token.deployed();
     await token.initialize("Integral", "SFXDX", 18, bridge.address);
-    await factory.deployed();
     await bridge.deployed();
 
   });
