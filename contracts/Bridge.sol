@@ -40,12 +40,6 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     /// @dev Fee can't be more than 100%
     uint256 private constant maxFeeRateBp = 100 * 100;
 
-    /// @dev Checks if caller is a messenger bot
-    modifier onlyMessengerBot {
-        require(hasRole(BOT_MESSENGER_ROLE, msg.sender), "Bridge: the caller is not a messenger bot!");
-        _;
-    }
-
     /// @dev Checks if caller is an admin
     modifier onlyAdmin {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Bridge: the caller is not an admin!");
