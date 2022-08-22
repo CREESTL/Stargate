@@ -36,6 +36,7 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
         uint8 decimals_,
         address bridge_
     ) public virtual initializer {
+        require(bridge_ != address(0));
         _decimals = decimals_;
         _bridge = bridge_;
         _tokenName = name_;

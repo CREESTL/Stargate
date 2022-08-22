@@ -57,6 +57,7 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
     constructor(
         address _botMessenger
     ) { 
+        require(_botMessenger != address(0));
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // The provided address gets a special role (used in signature verification)
