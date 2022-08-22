@@ -5,26 +5,20 @@ const { expect } = require("chai");
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 
-describe('Token', () => {
+describe('ERC20 Token', () => {
+
+  let token;
 
   // Deploy all contracts before each test suite
   beforeEach( async () => {
   	[ownerAcc, clientAcc1, clientAcc2, bridgeAcc] = await ethers.getSigners();
 
   	let tokenTx = await ethers.getContractFactory("WrappedERC20");
-  	let factoryTx = await ethers.getContractFactory("WrappedERC20Factory");
-  	let bridgeTx = await ethers.getContractFactory("Bridge");
-
-    // Owner is a bot messenger. 
-    bridge = await bridgeTx.deploy(ownerAcc.address);
     token = await tokenTx.deploy();
-    factory = await factoryTx.deploy();
 
     await token.deployed();
-    // Explicitly set provider address here instead of `bridge` contract address
+    // Explicitly set provider address here instead of bridge contract address
     await token.initialize("Integral", "SFXDX", 18, bridgeAcc.address);
-    await factory.deployed();
-    await bridge.deployed();
 
   });
 
