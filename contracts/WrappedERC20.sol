@@ -13,8 +13,8 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
 
     address internal _bridge;
     uint8 internal _decimals;
-    string internal _name;
-    string internal _symbol;  
+    string internal _tokenName;
+    string internal _tokenSymbol;  
     
     /// @dev Checks if the caller is the bridge contract
     modifier onlyBridge {
@@ -38,20 +38,20 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
     ) public virtual initializer {
         _decimals = decimals_;
         _bridge = bridge_;
-        _name = name_;
-        _symbol = symbol_;
+        _tokenName = name_;
+        _tokenSymbol = symbol_;
     }
 
     /// @notice Returns the name of the token
     /// @return The name of the token
     function name() public view override(ERC20, IWrappedERC20) returns(string memory) {
-        return _name;
+        return _tokenName;
     }
 
     /// @notice Returns the symbol of the token
     /// @return The symbol of the token
     function symbol() public view override(ERC20, IWrappedERC20) returns(string memory) {
-        return _symbol;
+        return _tokenSymbol;
     }
 
     /// @notice Returns number of decimals of the token
