@@ -55,7 +55,7 @@ describe('Bridge', () => {
       // Transfer ether to the bridge and lock it there
       await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
       .to.emit(bridge, "Lock")
-        // First three parameters are indexed (hashed) in the event, so their value is uknown 
+      // First three parameters are indexed (hashed) in the event, so their value is uknown 
         .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
       // Unlock locked tokens
