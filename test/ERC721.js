@@ -37,8 +37,11 @@ describe('ERC721 Token', () => {
   	.to.be.revertedWith("Token: caller is not a bridge!");
 
   	// Call from a bridge should secceed
+    expect(await token.balanceOf(clientAcc1.address)).to.equal(0);
   	await expect(token.connect(bridgeAcc).mint(clientAcc1.address, tokenId))
   	.to.emit(token, "Mint");
+    expect(await token.balanceOf(clientAcc1.address)).to.equal(1);
+
   });
 
   it('Should only burn tokens if caller is a bridge', async() => {
@@ -52,8 +55,10 @@ describe('ERC721 Token', () => {
   	.to.be.revertedWith("Token: caller is not a bridge!");
 
     // Call from a bridge should secceed
+    expect(await token.balanceOf(clientAcc1.address)).to.equal(1);
     await expect(token.connect(bridgeAcc).burn(tokenId))
   	.to.emit(token, "Burn");
+    expect(await token.balanceOf(clientAcc1.address)).to.equal(0);
 
   });
 

@@ -36,10 +36,13 @@ describe('ERC20 Token', () => {
     await expect(token.connect(clientAcc1).mint(clientAcc2.address, amount))
   	.to.be.revertedWith("Token: caller is not a bridge!");
 
+    expect(await token.balanceOf(clientAcc1.address)).to.equal(0);
   	// Call from a bridge should secceed
   	await expect(token.connect(bridgeAcc).mint(clientAcc1.address, amount))
   	.to.emit(token, "Mint")
   	.withArgs(anyValue, amount);
+    expect(await token.balanceOf(clientAcc1.address)).to.equal(amount);
+
   });
 
   it('Should only burn tokens if caller is a bridge', async() => {
@@ -54,9 +57,12 @@ describe('ERC20 Token', () => {
   	.to.be.revertedWith("Token: caller is not a bridge!");
 
     // Call from a bridge should secceed
+    expect(await token.balanceOf(clientAcc1.address)).to.equal(amount);
     await expect(token.connect(bridgeAcc).burn(clientAcc1.address, amount))
   	.to.emit(token, "Burn")
   	.withArgs(anyValue, amount);
+    expect(await token.balanceOf(clientAcc1.address)).to.equal(0);
+    
   });
 
   it('Should return correct address of the bridge', async() => {

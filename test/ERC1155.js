@@ -39,15 +39,24 @@ describe('ERC1155 Token', () => {
   	.to.be.revertedWith("Token: caller is not a bridge!");
 
   	// Call from a bridge should secceed
+    expect(await token.balanceOf(clientAcc1.address, tokenId)).to.equal(0);
   	await expect(token.connect(bridgeAcc).mint(clientAcc1.address, tokenId, amount))
   	.to.emit(token, "Mint");
+    expect(await token.balanceOf(clientAcc1.address, tokenId)).to.equal(amount);
+
 
     // Do the same with batches
     await expect(token.connect(clientAcc1).mintBatch(clientAcc1.address, ids, amounts))
     .to.be.revertedWith("Token: caller is not a bridge!");
 
+    expect(await token.balanceOf(clientAcc1.address, ids[0])).to.equal(0);
+    expect(await token.balanceOf(clientAcc1.address, ids[1])).to.equal(0);
+    expect(await token.balanceOf(clientAcc1.address, ids[2])).to.equal(0);
     await expect(token.connect(bridgeAcc).mintBatch(clientAcc1.address, ids, amounts))
     .to.emit(token, "MintBatch");
+    expect(await token.balanceOf(clientAcc1.address, ids[0])).to.equal(amounts[0]);
+    expect(await token.balanceOf(clientAcc1.address, ids[1])).to.equal(amounts[1]);
+    expect(await token.balanceOf(clientAcc1.address, ids[2])).to.equal(amounts[2]);
   });
 
   it('Should only burn tokens if caller is a bridge', async() => {
@@ -61,8 +70,10 @@ describe('ERC1155 Token', () => {
   	.to.be.revertedWith("Token: caller is not a bridge!");
 
     // Call from a bridge should secceed
+    expect(await token.balanceOf(clientAcc1.address, tokenId)).to.equal(amount);
     await expect(token.connect(bridgeAcc).burn(clientAcc1.address, tokenId, amount))
   	.to.emit(token, "Burn");
+    expect(await token.balanceOf(clientAcc1.address, tokenId)).to.equal(0);
 
     // Do the same with batches
     await expect(token.connect(bridgeAcc).mintBatch(clientAcc1.address, ids, amounts))
@@ -71,8 +82,14 @@ describe('ERC1155 Token', () => {
     await expect(token.connect(clientAcc2).burn(clientAcc1.address, ids, amounts))
     .to.be.revertedWith("Token: caller is not a bridge!");
 
+    expect(await token.balanceOf(clientAcc1.address, ids[0])).to.equal(amounts[0]);
+    expect(await token.balanceOf(clientAcc1.address, ids[1])).to.equal(amounts[1]);
+    expect(await token.balanceOf(clientAcc1.address, ids[2])).to.equal(amounts[2]);
     await expect(token.connect(bridgeAcc).burnBatch(clientAcc1.address, ids, amounts))
     .to.emit(token, "BurnBatch");
+    expect(await token.balanceOf(clientAcc1.address, ids[0])).to.equal(0);
+    expect(await token.balanceOf(clientAcc1.address, ids[1])).to.equal(0);
+    expect(await token.balanceOf(clientAcc1.address, ids[2])).to.equal(0);
   });
 
   it('Should return correct address of the bridge', async() => {

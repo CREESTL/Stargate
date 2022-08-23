@@ -21,6 +21,8 @@ describe('Bridge', () => {
   let mnemonic = "announce room limb pattern dry unit scale effort smooth jazz weasel alcohol";
   let bot_messenger = ethers.Wallet.fromMnemonic(mnemonic);
 
+  let provider = ethers.provider;
+
   // Deploy all contracts before each test suite
   beforeEach( async () => {
   	[ownerAcc, clientAcc1, clientAcc2] = await ethers.getSigners();
@@ -116,6 +118,7 @@ describe('Bridge', () => {
       let permitDigest = getPermitDigest(domain_separator, clientAcc1.address, amount, 0);
       // Get the signature
       let signature = getSignatureFromDigest(permitDigest, bot_messenger);
+      expect(await token.balanceOf(clientAcc1.address)).to.equal(0);
       // Call mint method providing parts of the signature
       await expect(bridge.connect(clientAcc1).mintWithPermit(
       	token.address,
@@ -125,6 +128,7 @@ describe('Bridge', () => {
       	signature.r,
       	signature.s
       	)).to.emit(bridge, "MintWithPermit").withArgs(token.address, clientAcc1.address, amount);
+      expect(await token.balanceOf(clientAcc1.address)).to.equal(amount);
 
     });
 
@@ -308,9 +312,12 @@ describe('Bridge', () => {
 
 	      // Transfer ether to the bridge and lock it there
 	      // Use clientAcc1 here
+      	let startBalance = await provider.getBalance(ownerAcc.address);
 	      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
 	      .to.emit(bridge, "Lock")
 	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+      	let endBalance = await provider.getBalance(ownerAcc.address);
+      	expect(startBalance.sub(endBalance)).to.be.gt(sum);
 
 	      // Mint ERC20 tokens
 	      // NOTE This should happen on the other chain for another client's account
@@ -356,9 +363,13 @@ describe('Bridge', () => {
 	      	);
 
 	      // Lock client's ERC20 tokens
+
+    		expect(await token.balanceOf(clientAcc1.address)).to.equal(sum);
 	      await expect(await bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
 	      .to.emit(bridge, "Lock")
 	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+    		expect(await token.balanceOf(clientAcc1.address)).to.equal(0);
+
 
 	      // Mint ERC20 tokens
 	      // NOTE This should happen on the other chain for another client's account
@@ -390,9 +401,12 @@ describe('Bridge', () => {
 			await bridge.setSupportedChain("ETH");
 
 	      // Lock native tokens
+      	let startBalance = await provider.getBalance(clientAcc1.address);
 	      await expect(bridge.connect(clientAcc1).lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
 	      .to.emit(bridge, "Lock")
 	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+	      let endBalance = await provider.getBalance(clientAcc1.address);
+      	expect(startBalance.sub(endBalance)).to.be.gt(amount);
 
 	      // Mint ERC20 tokens
 	      // NOTE This should happen on the other chain for another client's account
@@ -402,6 +416,7 @@ describe('Bridge', () => {
 	      // Get the signature
 	      let signature = getSignatureFromDigest(permitDigest, bot_messenger);
 	      // Call mint method providing parts of the signature
+    		expect(await token.balanceOf(clientAcc2.address)).to.equal(0);
 	      await expect(bridge.connect(clientAcc2).mintWithPermit(
 	      	token.address,
 	        sum, // Usually `amount` should be minted, but to burn tokens, client has to pay fees again
@@ -410,6 +425,7 @@ describe('Bridge', () => {
 	        signature.r,
 	        signature.s
 	        )).to.emit(bridge, "MintWithPermit").withArgs(token.address, clientAcc2.address, sum);
+    		expect(await token.balanceOf(clientAcc2.address)).to.equal(sum);
 
 	      
 	      // Burn minted ERC20 tokens
@@ -417,11 +433,14 @@ describe('Bridge', () => {
 	      // Let bridge transfer tokens from client to bridge
 	      await token.connect(clientAcc2).increaseAllowance(bridge.address, sum);
 
+
 	      // Caller pays extra fee to burn tokens. That is why `sum` but not `amount` was minted to him previously
+    		expect(await token.balanceOf(clientAcc2.address)).to.equal(sum);
 	      await expect(bridge.connect(clientAcc2).burn(token.address, amount, clientAcc1.address, "ETH"))
 	      .to.emit(bridge, "Burn")
 	        // First three parameters are indexed (hashed) in the event, so their value is uknown 
 	        .withArgs(anyValue, anyValue, anyValue, amount, "ETH");
+    		expect(await token.balanceOf(clientAcc2.address)).to.equal(0);
 
 	      // Unlock locked native tokens
 	      // NOTE We have to provide token name "Native" for **any** native token
@@ -436,6 +455,11 @@ describe('Bridge', () => {
 	      	signature.r,
 	      	signature.s
 	      	)).to.emit(bridge, "UnlockWithPermit").withArgs(anyValue, anyValue, amount);
+      	endBalance = await provider.getBalance(clientAcc1.address);
+
+      	// In the end balance is slightly less then in the beginning due to fees on lock/burn
+      	expect(endBalance).to.be.lt(startBalance);
+
 	  });
 
 		it('Should lock(ERC20), mint(ERC20), burn(ERC20), unlock(ERC20)', async() => {
@@ -562,10 +586,12 @@ describe('Bridge', () => {
 	      // Then try to collect fees
 	      let feeToWithDraw = ethers.utils.parseEther("0.03");
 
+      	let startBalance = await provider.getBalance(bridge.address);
 	      await expect(bridge.withdraw(addressZero, feeToWithDraw))
 	      .to.emit(bridge, "Withdraw")
 	      .withArgs(anyValue, anyValue, feeToWithDraw);
-
+	      let endBalance = await provider.getBalance(bridge.address);
+      	expect(startBalance.sub(endBalance)).to.equal(feeToWithDraw);
 	  });
 
 		it('Should fail to collect fees from native token with no transactions ', async() => {
@@ -628,9 +654,12 @@ describe('Bridge', () => {
 	      // Then try to collect fees
 	      let feeToWithDraw = ethers.utils.parseUnits("0.03", 18);
 
+      	let startBalance = await token.balanceOf(bridge.address);
 	      await expect(bridge.withdraw(token.address, feeToWithDraw))
 	      .to.emit(bridge, "Withdraw")
 	      .withArgs(anyValue, anyValue, feeToWithDraw);
+      	let endBalance = await token.balanceOf(bridge.address);
+      	expect(startBalance.sub(endBalance)).to.equal(feeToWithDraw);
 
 	  });
 
