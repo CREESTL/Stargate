@@ -7,7 +7,7 @@ const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 describe('ERC721 Token', () => {
 
-  let tokenId;
+  const tokenId = 777;
   let token;
 
   // Deploy all contracts before each test suite
@@ -21,8 +21,6 @@ describe('ERC721 Token', () => {
     await token.deployed();
     // Explicitly set provider address here instead of bridge contract address
     await token.initialize("Integral", "SFXDX", bridgeAcc.address);
-
-    tokenId = 777;
 
   });
 
