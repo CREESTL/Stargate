@@ -12,7 +12,7 @@ import "./interfaces/IWrappedERC1155.sol";
 contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
 
     address internal _bridge;
-    string internal _tokensUri;  
+    string internal _tokenUri;  
     
     /// @dev Checks if the caller is the bridge contract
     modifier onlyBridge {
@@ -31,13 +31,13 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
     ) public initializer {
         require(bridge_ != address(0));
         _bridge = bridge_;
-        _tokensUri = tokensUri_;
+        _tokenUri = tokensUri_;
     }
 
     /// @notice Returns the URI of tokens
     /// @return The URI of tokens
     function tokensUri() public view returns(string memory) {
-        return _tokensUri;
+        return _tokenUri;
     }
 
     /// @notice Creates amount tokens of specific type and assigns them to the user
