@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "./interfaces/IWrappedERC20Factory.sol";
 import "./interfaces/IWrappedERC20.sol";
 import "./WrappedERC20.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 
 
 /// @title A factory of custom ERC20 tokens used in the bridge
