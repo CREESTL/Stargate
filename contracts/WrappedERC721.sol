@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "./interfaces/IWrappedERC721.sol";
@@ -33,7 +32,7 @@ contract WrappedERC721 is IWrappedERC721, ERC721URIStorage, Initializable {
         string memory name_,
         string memory symbol_,
         address bridge_
-    ) public virtual initializer {
+    ) public initializer {
         require(bridge_ != address(0));
         _bridge = bridge_;
         _tokenName = name_;
@@ -55,7 +54,7 @@ contract WrappedERC721 is IWrappedERC721, ERC721URIStorage, Initializable {
     /// @notice Creates tokens and assigns them to account
     /// @param to The receiver of tokens
     /// @param tokenId The ID of minted token
-    function mint(address to, uint256 tokenId) public virtual onlyBridge {
+    function mint(address to, uint256 tokenId) public onlyBridge {
         _safeMint(to, tokenId);
         emit Mint(to, tokenId);
     }
@@ -63,14 +62,14 @@ contract WrappedERC721 is IWrappedERC721, ERC721URIStorage, Initializable {
     
     /// @notice Destroys a token with a given ID
     /// @param tokenId The ID of the token to destroy
-    function burn(uint256 tokenId) public virtual onlyBridge {
+    function burn(uint256 tokenId) public onlyBridge {
         _burn(tokenId);
         emit Burn(tokenId);
     }
 
     /// @notice Returns the address of the bridge
     /// @return The address of the bridge
-    function bridge() public view virtual returns(address) {
+    function bridge() public view returns(address) {
         return _bridge;
     }
 }

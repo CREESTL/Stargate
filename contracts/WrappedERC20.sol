@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "./interfaces/IWrappedERC20.sol";
@@ -35,7 +34,7 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
         string memory symbol_,
         uint8 decimals_,
         address bridge_
-    ) public virtual initializer {
+    ) public initializer {
         require(bridge_ != address(0));
         _decimals = decimals_;
         _bridge = bridge_;
@@ -64,21 +63,21 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
     /// @notice Creates tokens and assigns them to account, increasing the total supply.
     /// @param to The receiver of tokens
     /// @param amount The amount of tokens to mint
-    function mint(address to, uint256 amount) public virtual onlyBridge {
+    function mint(address to, uint256 amount) public onlyBridge {
         _mint(to, amount);
         emit Mint(to, amount);
     }
 
     /// @notice Returns the address of the bridge
     /// @return The address of the bridge
-    function bridge() public view virtual returns(address) {
+    function bridge() public view returns(address) {
         return _bridge;
     }
     
     /// @notice Destroys tokens from account, reducing the total supply.
     /// @param from The address holding the tokens
     /// @param amount The amount of tokens to burn
-    function burn(address from, uint256 amount) public virtual onlyBridge {
+    function burn(address from, uint256 amount) public onlyBridge {
         _burn(from, amount);
         emit Burn(from, amount);
     }
