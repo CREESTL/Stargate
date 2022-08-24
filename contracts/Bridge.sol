@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "./interfaces/IBridge.sol";
 import "./interfaces/IWrappedERC20.sol";
@@ -14,7 +15,7 @@ import "./WrappedERC20.sol";
 import "hardhat/console.sol";
 
 /// @title A ERC20-ERC20 bridge contract
-contract Bridge is IBridge, AccessControl, ReentrancyGuard {
+contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     using SafeERC20 for IWrappedERC20;
 
@@ -64,6 +65,17 @@ contract Bridge is IBridge, AccessControl, ReentrancyGuard {
         botMessenger = _botMessenger;
         _setupRole(BOT_MESSENGER_ROLE, botMessenger);
 
+    }
+
+    /// @notice Allow this contract to receiver ERC721 tokens
+    /// @dev Should return the selector of itself
+    /// @dev Whenever an IERC721 token is transferred to this contract 
+    ///      via IERC721.safeTransferFrom this function is called   
+    function onERC721Received(address operator, address from, uint256 tokeid, bytes calldata data)
+    public 
+    returns (bytes4) 
+    {
+        return IERC721Receiver.onERC721Received.selector;
     }
 
 
