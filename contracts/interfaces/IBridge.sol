@@ -15,15 +15,37 @@ interface IBridge {
      * chainB is still the target chain
      * (in comments below)
      */
-    
 
-    /// @notice Locks token on the source chain
+    /// @notice Locks native tokens on the source chain
+    /// @param amount The amount of tokens to lock
+    /// @param receiver The receiver of wrapped tokens
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were locked successfully
+    function lockNative(
+        uint256 amount,
+        string memory receiver,
+        string memory targetChain
+    ) external payable returns(bool);
+
+    /// @notice Locks ERC20 tokens on the source chain
     /// @param token Address of the token to lock
     /// @param amount The amount of tokens to lock
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
-    function lock(
+    function lockERC20(
+        address token,
+        uint256 amount,
+        string memory receiver,
+        string memory targetChain
+    ) external payable returns(bool);
+
+    /// @notice Locks ERC 721 token on the source chain
+    /// @param token Address of the token to lock
+    /// @param receiver The receiver of wrapped tokens
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were locked successfully
+    function lockERC721(
         address token,
         uint256 amount,
         string memory receiver,
@@ -77,13 +99,25 @@ interface IBridge {
         bytes32 s
     ) external returns(bool);
 
+    /// @notice Indicates that native tokens were locked in the source chain
+    /// @param sender The sender of the locking transaction
+    /// @param receiver The receiver of wrapped tokens
+    /// @param amount The amount of tokens to lock
+    /// @param targetChain The name of the target chain
+    event LockNative(
+        address indexed sender,
+        string indexed receiver,
+        uint256 amount,
+        string targetChain
+    );
+
     /// @notice Indicates that some tokens were locked in the source chain
     /// @param token Address of the token to lock
     /// @param sender The sender of the locking transaction
     /// @param receiver The receiver of wrapped tokens
     /// @param amount The amount of tokens to lock
     /// @param targetChain The name of the target chain
-    event Lock(
+    event LockERC20(
         address indexed token,
         address indexed sender,
         string indexed receiver,

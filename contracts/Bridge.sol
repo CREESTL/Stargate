@@ -78,14 +78,48 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return IERC721Receiver.onERC721Received.selector;
     }
 
-
-    /// @notice Locks tokens on the source chain
-    /// @param token Address of the token to lock (zero address for native tokens)
+    /// @notice Locks native tokens on the source chain
     /// @param amount The amount of tokens to lock
-    /// @param receiver The receiver of wrapped tokens on the target chain (not only EVM)
+    /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
-    function lock(
+    function lockNative(
+        uint256 amount,
+        string memory receiver,
+        string memory targetChain
+    ) 
+    external
+    payable // User has to provide amount + feeAmount of tokens for function to work
+    isSupportedChain(targetChain)
+    nonReentrant
+    returns(bool) 
+    {        
+
+        address sender = msg.sender;
+
+        // Calculate the fee and save it
+        uint256 feeAmount = calcFee(amount);
+        // In case of native tokens the address is zero address
+        feesForToken[address(0)] += feeAmount;
+        
+        // User provides some native tokens to the bridge when calling this `lock` method so no
+        // need to transfer any tokens here once more
+        // Make sure that he sent enough tokens to cover both amount and fee
+        require(msg.value >= amount + feeAmount, "Bridge: not enough tokens to cover the fee!");
+
+        emit LockNative(sender, receiver, amount, targetChain);
+
+        return true;
+    }
+
+
+    /// @notice Locks ERC20 tokens on the source chain
+    /// @param token Address of the token to lock
+    /// @param amount The amount of tokens to lock
+    /// @param receiver The receiver of wrapped tokens
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were locked successfully
+    function lockERC20(
         address token,
         uint256 amount,
         string memory receiver,
@@ -95,7 +129,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     // If a user wants to lock native tokens - he should provide `amount+fee` native tokens
     // The fee can be calculated using `calcFee` method (only by the admin)
     payable
-    override
     isSupportedChain(targetChain)
     nonReentrant
     returns(bool)
@@ -106,40 +139,38 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         uint256 feeAmount = calcFee(amount);
         feesForToken[token] += feeAmount;
 
-        // Custom tokens
-        if (token != address(0)){
      
-            // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the frontend 
-            // before transfering the tokens
+        // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the frontend 
+        // before transfering the tokens
 
-            // After this transfer all tokens are in possesion of the bridge contract and they can not be
-            // withdrawn by explicitly calling `ERC20.safeTransferFrom` of `ERC20.transferFrom` because the bridge contract
-            // does not provide allowance of these tokens for anyone. The only way to transfer tokens from the
-            // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
-            // Thus, transfered tokens are locked inside the bridge contract
-            // Transfer additional fee with the initial amount of tokens
-            IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
+        // After this transfer all tokens are in possesion of the bridge contract and they can not be
+        // withdrawn by explicitly calling `ERC20.safeTransferFrom` of `ERC20.transferFrom` because the bridge contract
+        // does not provide allowance of these tokens for anyone. The only way to transfer tokens from the
+        // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
+        // Thus, transfered tokens are locked inside the bridge contract
+        // Transfer additional fee with the initial amount of tokens
+        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
 
-            // Emit the lock event with detailed information
-            emit Lock(token, sender, receiver, amount, targetChain);
+        // Emit the lock event with detailed information
+        emit LockERC20(token, sender, receiver, amount, targetChain);
 
-            return true;
-
-        // Native tokens
-        } else {
-
-            // User provides some native tokens to the bridge when calling this `lock` method so no
-            // need to transfer any tokens here once more
-            // Make sure that he sent enought tokens to cover both amount and fee
-            require(msg.value >= amount + feeAmount, "Bridge: not enough tokens to cover the fee!");
-
-            emit Lock(token, sender, receiver, amount, targetChain);
-
-            return true;
-        }
+        return true;
 
     }
 
+    /// @notice Locks ERC 721 token on the source chain
+    /// @param token Address of the token to lock
+    /// @param receiver The receiver of wrapped tokens
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were locked successfully
+    function lockERC721(
+        address token,
+        uint256 amount,
+        string memory receiver,
+        string memory targetChain
+    ) external payable returns(bool) {
+
+    }
 
     /// @notice Burns tokens on a target chain
     /// @param token Address of the token to burn (zero address for native tokens)
@@ -154,7 +185,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         string memory targetChain
     )
     external
-    override
     isSupportedChain(targetChain)
     nonReentrant
     returns(bool)
@@ -205,7 +235,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         bytes32 s
     )
     external
-    override
     nonReentrant
     returns(bool)
     {   
@@ -242,7 +271,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         bytes32 s
     )
     external
-    override
     nonReentrant
     returns(bool)
     {

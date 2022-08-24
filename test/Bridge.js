@@ -51,10 +51,10 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
 
       // Transfer ether to the bridge and lock it there
-      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
-      .to.emit(bridge, "Lock")
-      // First three parameters are indexed (hashed) in the event, so their value is uknown 
-        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
+      .to.emit(bridge, "LockNative")
+      // First two parameters are indexed (hashed) in the event, so their value is uknown 
+        .withArgs(anyValue, anyValue, amount, "Ala");
 
       // Unlock locked tokens
       // NOTE We have to provide token name "Native" for **any** native token
@@ -81,7 +81,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
 
       // Set `value` to less than `sum`
-      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum.div(2)}))
+      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum.div(2)}))
       .to.be.revertedWith("Bridge: not enough tokens to cover the fee!");
     });
 
@@ -193,9 +193,8 @@ describe('Bridge', () => {
 
       // Lock tokens. 
       // Call from the same address as in the signature!
-      await expect(await bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
-      .to.emit(bridge, "Lock")
-        // First three parameters are indexed (hashed) in the event, so their value is uknown 
+      await expect(await bridge.connect(clientAcc1).lockERC20(token.address, amount, clientAcc1.address, "Ala"))
+      .to.emit(bridge, "LockERC20")
         .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
       // Unlock locked tokens
@@ -226,7 +225,7 @@ describe('Bridge', () => {
 
       // We did not provide the caller (client) with any ERC tokens so far. So the bridge can not 
       // tranfer them from user's adrress fo the bridge itself
-      await expect(bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
+      await expect(bridge.connect(clientAcc1).lockERC20(token.address, amount, clientAcc1.address, "Ala"))
       .to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
@@ -278,7 +277,6 @@ describe('Bridge', () => {
       	);
       await expect(bridge.connect(clientAcc1).burn(token.address, amount, clientAcc1.address, "ETH"))
       .to.emit(bridge, "Burn")
-        // First three parameters are indexed (hashed) in the event, so their value is uknown 
         .withArgs(anyValue, anyValue, anyValue, amount, "ETH");
 
     });
@@ -313,9 +311,9 @@ describe('Bridge', () => {
 	      // Transfer ether to the bridge and lock it there
 	      // Use clientAcc1 here
       	let startBalance = await provider.getBalance(ownerAcc.address);
-	      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
-	      .to.emit(bridge, "Lock")
-	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+	      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
+	      .to.emit(bridge, "LockNative")
+	      .withArgs(anyValue, anyValue, amount, "Ala");
       	let endBalance = await provider.getBalance(ownerAcc.address);
       	expect(startBalance.sub(endBalance)).to.be.gt(sum);
 
@@ -365,8 +363,8 @@ describe('Bridge', () => {
 	      // Lock client's ERC20 tokens
 
     		expect(await token.balanceOf(clientAcc1.address)).to.equal(sum);
-	      await expect(await bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
-	      .to.emit(bridge, "Lock")
+	      await expect(await bridge.connect(clientAcc1).lockERC20(token.address, amount, clientAcc1.address, "Ala"))
+	      .to.emit(bridge, "LockERC20")
 	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
     		expect(await token.balanceOf(clientAcc1.address)).to.equal(0);
 
@@ -402,9 +400,9 @@ describe('Bridge', () => {
 
 	      // Lock native tokens
       	let startBalance = await provider.getBalance(clientAcc1.address);
-	      await expect(bridge.connect(clientAcc1).lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
-	      .to.emit(bridge, "Lock")
-	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+	      await expect(bridge.connect(clientAcc1).lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
+	      .to.emit(bridge, "LockNative")
+	      .withArgs(anyValue, anyValue, amount, "Ala");
 	      let endBalance = await provider.getBalance(clientAcc1.address);
       	expect(startBalance.sub(endBalance)).to.be.gt(amount);
 
@@ -438,7 +436,6 @@ describe('Bridge', () => {
     		expect(await token.balanceOf(clientAcc2.address)).to.equal(sum);
 	      await expect(bridge.connect(clientAcc2).burn(token.address, amount, clientAcc1.address, "ETH"))
 	      .to.emit(bridge, "Burn")
-	        // First three parameters are indexed (hashed) in the event, so their value is uknown 
 	        .withArgs(anyValue, anyValue, anyValue, amount, "ETH");
     		expect(await token.balanceOf(clientAcc2.address)).to.equal(0);
 
@@ -489,9 +486,8 @@ describe('Bridge', () => {
 
 	      // Lock minted ERC20 tokens
 	      // Call from the same address as in the signature!
-	      await expect(await bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
-	      .to.emit(bridge, "Lock")
-	        // First three parameters are indexed (hashed) in the event, so their value is uknown 
+	      await expect(await bridge.connect(clientAcc1).lockERC20(token.address, amount, clientAcc1.address, "Ala"))
+	      .to.emit(bridge, "LockERC20")
 	        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
 
@@ -521,7 +517,6 @@ describe('Bridge', () => {
 	      // Caller pays extra fee to burn tokens. That is why `sum` but not `amount` was minted to him previously
 	      await expect(bridge.connect(clientAcc2).burn(token.address, amount, clientAcc1.address, "ETH"))
 	      .to.emit(bridge, "Burn")
-	        // First three parameters are indexed (hashed) in the event, so their value is uknown 
 	        .withArgs(anyValue, anyValue, anyValue, amount, "ETH");
 
 	      // Unlock locked tokens
@@ -579,9 +574,9 @@ describe('Bridge', () => {
 
 	      await bridge.setSupportedChain("Ala");
 
-	      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
-	      .to.emit(bridge, "Lock")
-	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+	      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
+	      .to.emit(bridge, "LockNative")
+	      .withArgs(anyValue, anyValue, amount, "Ala");
 
 	      // Then try to collect fees
 	      let feeToWithDraw = ethers.utils.parseEther("0.03");
@@ -614,9 +609,9 @@ describe('Bridge', () => {
 
 	      await bridge.setSupportedChain("Ala");
 
-	      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
-	      .to.emit(bridge, "Lock")
-	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+	      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
+	      .to.emit(bridge, "LockNative")
+	      .withArgs(anyValue, anyValue, amount, "Ala");
 
 	      // Set an enormous amount of fees
 	      let feeToWithDraw = ethers.utils.parseEther("1000");
@@ -647,8 +642,8 @@ describe('Bridge', () => {
 	      	);
 
 	      // Lock tokens 
-	      await expect(await bridge.connect(clientAcc1).lock(token.address, amount, clientAcc1.address, "Ala"))
-	      .to.emit(bridge, "Lock")
+	      await expect(await bridge.connect(clientAcc1).lockERC20(token.address, amount, clientAcc1.address, "Ala"))
+	      .to.emit(bridge, "LockERC20")
 	      .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
 
 	      // Then try to collect fees
@@ -672,16 +667,15 @@ describe('Bridge', () => {
 	      // Forbid transactions on Ala chain
 	      await bridge.removeSupportedChain("Ala");
 
-	      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
+	      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
 	      .to.be.revertedWith("Bridge: the chain is not supported!");
 
 	      // Allow transactions on Ala chain
 	      await bridge.setSupportedChain("Ala");
 
-	      await expect(bridge.lock(addressZero, amount, clientAcc1.address, "Ala", {value: sum}))
-	      .to.emit(bridge, "Lock")
-	        // First three parameters are indexed (hashed) in the event, so their value is uknown 
-	        .withArgs(anyValue, anyValue, anyValue, amount, "Ala");
+	      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
+	      .to.emit(bridge, "LockNative")
+	        .withArgs(anyValue, anyValue, amount, "Ala");
 
 	  });
 	});
