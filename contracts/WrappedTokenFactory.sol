@@ -60,7 +60,7 @@ contract WrappedTokenFactory is IWrappedERC20Factory {
     /// @notice Returns the name of the original token and the original chain for a wrapped token
     /// @param wrappedToken The address of the wrapped token
     /// @return The name of the original chain and the address of the original token
-    function getOriginalToken(address wrappedToken) public view returns (TokenInfo memory) {
+    function getOriginalToken(address wrappedToken) external view returns (TokenInfo memory) {
         require(wrappedToken != address(0), "Factory: wrapped token can not have a zero address!");
         require(
             bytes(wrappedToOriginalTokens[wrappedToken].originalChain).length > 0,
@@ -72,7 +72,7 @@ contract WrappedTokenFactory is IWrappedERC20Factory {
 
     /// @notice Returns the address of the wrapped token by its name
     /// @dev Used only for ERC20 and ERC721
-    function getWrappedAddressByName(string memory name) public view returns (address) {
+    function getWrappedAddressByName(string memory name) external view returns (address) {
         require(bytes(name).length > 0 , "Factory: token name is too short!");
         require(wrappedNameToAddress[name] != address(0), "Factory: no wrapped token with this name!");
         return wrappedNameToAddress[name];
@@ -80,7 +80,7 @@ contract WrappedTokenFactory is IWrappedERC20Factory {
 
     /// @notice Returns the address of the wrapped token by its URI
     /// @dev Used only for ERC1155
-    function getWrappedAddressByUri(string memory uri) public view returns (address) {
+    function getWrappedAddressByUri(string memory uri) external view returns (address) {
         require(bytes(uri).length > 0 , "Factory: token URI is too short!");
         require(wrappedUriToAddress[uri] != address(0), "Factory: no wrapped token with this URI!");
         return wrappedUriToAddress[uri];
@@ -102,7 +102,7 @@ contract WrappedTokenFactory is IWrappedERC20Factory {
         string memory symbol,
         uint8 decimals,
         address bridge
-    ) public returns (address) {
+    ) external returns (address) {
 
         require(bytes(originalChain).length > 0, "Factory: chain name is too short!");
         require(bytes(name).length > 0, "Factory: new token name is too short!");
@@ -145,7 +145,7 @@ contract WrappedTokenFactory is IWrappedERC20Factory {
         string memory name,
         string memory symbol,
         address bridge
-    ) public returns (address) {
+    ) external returns (address) {
 
         require(bytes(originalChain).length > 0, "Factory: chain name is too short!");
         require(bytes(name).length > 0, "Factory: new token name is too short!");
@@ -185,7 +185,7 @@ contract WrappedTokenFactory is IWrappedERC20Factory {
         address originalToken,
         string memory tokenUri,
         address bridge
-    ) public returns (address) {
+    ) external returns (address) {
 
         require(bytes(originalChain).length > 0, "Factory: chain name is too short!");
         require(bytes(tokenUri).length > 0, "Factory: new token URI is too short!");

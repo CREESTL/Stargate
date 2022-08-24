@@ -28,7 +28,7 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
     function initialize(
         string memory tokensUri_,
         address bridge_
-    ) public initializer {
+    ) external initializer {
         require(bridge_ != address(0));
         _bridge = bridge_;
         _tokenUri = tokensUri_;
@@ -36,7 +36,7 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
 
     /// @notice Returns the URI of tokens
     /// @return The URI of tokens
-    function tokensUri() public view returns(string memory) {
+    function tokensUri() external view returns(string memory) {
         return _tokenUri;
     }
 
@@ -45,7 +45,7 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
     /// @param id The ID of the token type
     /// @param amount The amount of tokens to be minted
     function mint(address to, uint256 id, uint256 amount) 
-        public 
+        external 
         onlyBridge 
     {
         _mint(to, id, amount, "");
@@ -57,7 +57,7 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
     /// @param ids The array of token types IDs
     /// @param amounts The array of amount of tokens of each token type
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts) 
-        public 
+        external 
         onlyBridge
     {
         _mintBatch(to, ids, amounts, "");
@@ -69,7 +69,7 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
     /// @param id The token type ID
     /// @param amount The amount of tokens to be burnt
     function burn(address from, uint256 id, uint256 amount) 
-        public 
+        external 
         onlyBridge   
     {
         _burn(from, id, amount);
@@ -81,7 +81,7 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
     /// @param ids The array of token type IDs
     /// @param amounts The array of amounts of tokens to be burnt
     function burnBatch(address from, uint256[] memory ids, uint256[] memory amounts) 
-        public 
+        external 
         onlyBridge        
     {
         _burnBatch(from, ids, amounts);
@@ -90,7 +90,7 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
 
     /// @notice Returns the address of the bridge contract
     /// @return The address of the bridge contract
-    function bridge() public view returns(address) {
+    function bridge() external view returns(address) {
         return _bridge;
     }
 }
