@@ -18,7 +18,7 @@ interface IBridge {
 
     /// @notice Locks native tokens on the source chain
     /// @param amount The amount of tokens to lock
-    /// @param receiver The receiver of wrapped tokens
+    /// @param receiver The wrapped of wrapped tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lockNative(
@@ -40,7 +40,7 @@ interface IBridge {
         string memory targetChain
     ) external payable returns(bool);
 
-    /// @notice Locks ERC 721 token on the source chain
+    /// @notice Locks ERC721 token on the source chain
     /// @param token The address of the token to lock
     /// @param tokenId The ID of the token to lock
     /// @param receiver The receiver of wrapped tokens
@@ -69,7 +69,7 @@ interface IBridge {
     ) external payable returns(bool);
 
     /// @notice Burns ERC20 tokens on a target chain
-    /// @param token Address of the token to burn
+    /// @param token The address of the token to burn
     /// @param amount The amount of tokens to burn
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
@@ -83,7 +83,7 @@ interface IBridge {
 
 
     /// @notice Burns ERC721 tokens on a target chain
-    /// @param token Address of the token to burn 
+    /// @param token The address of the token to burn 
     /// @param tokenId The ID of the token to lock
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
@@ -96,7 +96,7 @@ interface IBridge {
     ) external payable returns(bool);
 
     /// @notice Burns ERC1155 tokens on a target chain
-    /// @param token Address of the token to burn 
+    /// @param token The address of the token to burn
     /// @param tokenId The ID of the token to lock
     /// @param amount The amount of tokens of specific type
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
@@ -112,7 +112,7 @@ interface IBridge {
 
 
     /// @notice Mints ERC20 tokens if the user is permitted to do so
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param amount The amount of tokens to mint
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -130,7 +130,7 @@ interface IBridge {
 
 
     /// @notice Mints ERC721 tokens if the user is permitted to do so
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param tokenId The ID of token to mint
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -148,7 +148,7 @@ interface IBridge {
 
 
     /// @notice Mints ERC1155 tokens if the user is permitted to do so
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param tokenId The ID of type of tokens
     /// @param amount The amount of tokens of specific type
     /// @param nonce Prevent replay attacks
@@ -183,7 +183,7 @@ interface IBridge {
     ) external returns(bool);
     
     /// @notice Unlocks ERC20 tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
+    /// @param token The address of the token to unlock
     /// @param amount The amount of tokens to unlock
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -200,7 +200,7 @@ interface IBridge {
     ) external returns(bool);
 
     /// @notice Unlocks ERC721 tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
+    /// @param token The address of the token to unlock
     /// @param tokenId The ID of token to unlock
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -307,7 +307,7 @@ interface IBridge {
     );
 
     /// @notice Indicates that ERC721 tokens were burnt in the target chain
-    /// @param token Address of the token to burn
+    /// @param token The address of the token to burn
     /// @param tokenId The ID of transfered token
     /// @param sender The sender of the burning transaction
     /// @param receiver The receiver of unlocked tokens
@@ -321,7 +321,7 @@ interface IBridge {
     );
 
     /// @notice Indicates that ERC1155 tokens were burnt in the target chain
-    /// @param token Address of the token to burn
+    /// @param token The address of the token to burn
     /// @param tokenId The ID of transfered token
     /// @param sender The sender of the burning transaction
     /// @param receiver The receiver of unlocked tokens
@@ -338,7 +338,7 @@ interface IBridge {
 
 
     /// @notice Indicates that ERC20 tokens were minted by permitted user
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param receiver Address of the wallet in the target chain
     /// @param amount The amount of tokens to mint
     event MintWithPermitERC20(
@@ -348,7 +348,7 @@ interface IBridge {
     );
 
     /// @notice Indicates that ERC721 tokens were minted by permitted user
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param tokenId The ID of transfered token
     /// @param receiver Address of the wallet in the target chain
     event MintWithPermitERC721(
@@ -358,7 +358,7 @@ interface IBridge {
     );
 
     /// @notice Indicates that ERC1155 tokens were minted by permitted user
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param tokenId The ID of transfered token
     /// @param receiver Address of the wallet in the target chain
     /// @param amount The amount of tokens of specific type

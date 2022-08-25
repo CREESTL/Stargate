@@ -98,7 +98,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @notice Locks native tokens on the source chain
     /// @param amount The amount of tokens to lock
-    /// @param receiver The receiver of wrapped tokens
+    /// @param receiver The wrapped of wrapped tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lockNative(
@@ -245,7 +245,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return keccak256(
             abi.encode(
                 keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingAddress)"
                 ),
                 // NOTE This is a hardcoded name for any native token of the chain (ETH, MATIC, etc.)
                 keccak256(bytes("Native")),
@@ -274,7 +274,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         bytes32 permitHash = keccak256(
             abi.encode(
                 keccak256(
-                    "Permit(address spender,uint256 value,uint256 nonce)"
+                    "Permit(address receiver,uint256 amount,uint256 nonce)"
                 ),
                 receiver,
                 amount,
@@ -338,7 +338,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
     /// @notice Burns ERC20 tokens on a target chain
-    /// @param token Address of the token to burn
+    /// @param token The address of the token to burn
     /// @param amount The amount of tokens to burn
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
@@ -366,15 +366,13 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
-        // NOTE ERC20.increaseAllowance(address(this), amount) must be called on the backend 
-        // before transfering the tokens
 
         // Transfer user's tokens (and a fee) to the bridge contract from target chain account
         // NOTE This method should be called from the address on the target chain
-        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount);
+        //IWrappedERC20(token).safeTransferFrom(sender, address(this), amount);
         // And burn them immediately
         // Burn all tokens except the fee
-        IWrappedERC20(token).burn(address(this), amount);
+        IWrappedERC20(token).burn(sender, amount);
 
         emit BurnERC20(token, sender, receiver, amount, targetChain);
 
@@ -382,7 +380,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
     /// @notice Mints ERC20 tokens if the user is permitted to do so
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param amount The amount of tokens to mint
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -417,7 +415,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
     /// @notice Unlocks ERC20 tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
+    /// @param token The address of the token to unlock
     /// @param amount The amount of tokens to unlock
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -537,7 +535,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return keccak256(
             abi.encode(
                 keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingAddress)"
                 ),
                 // Token name
                 keccak256(bytes(ERC20token.name())),
@@ -566,7 +564,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         bytes32 permitHash = keccak256(
             abi.encode(
                 keccak256(
-                    "Permit(address spender,uint256 value,uint256 nonce)"
+                    "Permit(address receiver,uint256 amount,uint256 nonce)"
                 ),
                 receiver,
                 amount,
@@ -620,7 +618,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
 
     /// @notice Burns ERC721 tokens on a target chain
-    /// @param token Address of the token to burn 
+    /// @param token The address of the token to burn 
     /// @param tokenId The ID of the token to lock
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
@@ -649,11 +647,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
-        // NOTE ERC721.setApprovalForAll(address(this), true) must be called on the backend 
-        // before transfering the tokens
-
-        IWrappedERC721(token).safeTransferFrom(sender, address(this), tokenId);
-        // Burn all tokens except the fee
         IWrappedERC721(token).burn(tokenId);
 
         emit BurnERC721(token, tokenId, sender, receiver, targetChain);
@@ -663,7 +656,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
 
     /// @notice Mints ERC721 tokens if the user is permitted to do so
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param tokenId The ID of token to mint
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -699,7 +692,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
 
     /// @notice Unlocks ERC721 tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
+    /// @param token The address of the token to unlock
     /// @param tokenId The ID of token to unlock
     /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
@@ -818,7 +811,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return keccak256(
             abi.encode(
                 keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingAddress)"
                 ),
                 // Token name
                 keccak256(bytes(ERC721token.name())),
@@ -847,7 +840,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         bytes32 permitHash = keccak256(
             abi.encode(
                 keccak256(
-                    "Permit(address spender,uint256 value,uint256 nonce)"
+                    "Permit(address receiver,uint256 amount,uint256 nonce)"
                 ),
                 receiver,
                 tokenId,
@@ -867,7 +860,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @notice Locks ERC1155 token on the source chain
     /// @param token The address of the token to lock
     /// @param tokenId The ID of token type
-    /// @param amount The amount of tokens of specific type
+    /// @param amount The amount of tokens of specifi type
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
@@ -893,7 +886,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
-     
         // NOTE ERC1155.setApprovalForAll(address(this), true) must be called on the backend 
         // before transfering the tokens
 
@@ -907,7 +899,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
 
     /// @notice Burns ERC1155 tokens on a target chain
-    /// @param token Address of the token to burn 
+    /// @param token The address of the token to burn
     /// @param tokenId The ID of the token to lock
     /// @param amount The amount of tokens of specific type
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
@@ -938,11 +930,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
-        // NOTE ERC1155.setApprovalForAll(address(this), true) must be called on the backend 
-        // before transfering the tokens
-
-        IWrappedERC1155(token).safeTransferFrom(sender, address(this), tokenId, amount, bytes("iamtoken"));
-        // Burn all tokens except the fee
+        // Burn all tokens from user's wallet
         IWrappedERC1155(token).burn(sender, tokenId, amount);
 
         emit BurnERC1155(token, tokenId, sender, receiver, amount, targetChain);
@@ -951,7 +939,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
     /// @notice Mints ERC1155 tokens if the user is permitted to do so
-    /// @param token Address of the token to mint
+    /// @param token The address of the token to mint
     /// @param tokenId The ID of type of tokens
     /// @param amount The amount of tokens of specific type
     /// @param nonce Prevent replay attacks
@@ -1115,7 +1103,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return keccak256(
             abi.encode(
                 keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    "EIP712Domain(string uri,string version,uint256 chainId,address verifyingAddress)"
                 ),
                 // Token uri
                 keccak256(bytes(ERC1155token.uri(tokenId))),
@@ -1143,7 +1131,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         bytes32 permitHash = keccak256(
             abi.encode(
                 keccak256(
-                    "Permit(address spender,uint256 value,uint256 nonce)"
+                    "Permit(address receiver,uint256 amount,uint256 nonce)"
                 ),
                 receiver,
                 amount,
@@ -1175,7 +1163,8 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @return The fee amount in atomic tokens of the chain (e.g. wei in Ethereum)
     function calcFee(uint256 amount) public view returns(uint256) {
         uint256 result = amount * feeRateBp / percentDenominator;
-        require(result >= 1, "Bridge: transaction amount too low for fees!");
+        // TODO this line works well for natives or erc20, but not for erc721 or erc1155
+        //require(result >= 1, "Bridge: transaction amount too low for fees!");
         return result;
     }
 
