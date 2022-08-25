@@ -46,7 +46,6 @@ interface IWrappedERC1155 is IERC1155MetadataURI {
     event MintBatch(address indexed to, uint256[] indexed ids, uint256[] indexed amounts);
     
     /// @notice Is emitted on every burn of the token
-    // TODO maybe make it not indexed
     event Burn(address indexed from, uint256 indexed id, uint256 indexed amount);
 
     /// @notice Is emitted on everu burn of the batch of tokens

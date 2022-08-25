@@ -32,7 +32,6 @@ interface IWrappedERC721 is IERC721Metadata {
     event Mint(address indexed to, uint256 indexed tokenId);
     
     /// @notice Is emitted on every burn of the token
-    // TODO maybe make it not indexed
     event Burn(uint indexed tokenId);
 }
 
