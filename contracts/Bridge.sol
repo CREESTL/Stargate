@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
 import "./interfaces/IBridge.sol";
 import "./interfaces/IWrappedERC20.sol";
@@ -72,14 +73,28 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @notice Allow this contract to receiver ERC721 tokens
     /// @dev Should return the selector of itself
-    /// @dev Whenever an IERC721 token is transferred to this contract 
-    ///      via IERC721.safeTransferFrom this function is called   
+    /// @dev Whenever an ERC721 token is transferred to this contract 
+    ///      via ERC721.safeTransferFrom this function is called   
     function onERC721Received(address operator, address from, uint256 tokeid, bytes calldata data)
     public 
     returns (bytes4) 
     {
         return IERC721Receiver.onERC721Received.selector;
     }
+
+    /// @notice Allow this contract to receiver ERC1155 tokens
+    /// @dev Should return the selector of itself
+    /// @dev Whenever an ERC1155 token is transferred to this contract 
+    ///      via ERC1155.safeTransferFrom this function is called   
+    function onERC1155Received(address operator, address from, uint256 tokeid, uint256 amount, bytes calldata data)
+    public 
+    returns (bytes4) 
+    {
+        return IERC1155Receiver.onERC1155Received.selector;
+    }
+
+
+    //==========Native Tokens Functions==========
 
     /// @notice Locks native tokens on the source chain
     /// @param amount The amount of tokens to lock
@@ -92,7 +107,9 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         string memory targetChain
     ) 
     external
-    payable // User has to provide amount + feeAmount of tokens for function to work
+    // If a user wants to lock tokens - he should provide `amount+fee` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
+    payable
     isSupportedChain(targetChain)
     nonReentrant
     returns(bool) 
@@ -105,217 +122,20 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // In case of native tokens the address is zero address
         TokenFees[address(0)] += feeAmount;
         
-        // User provides some native tokens to the bridge when calling this `lock` method so no
-        // need to transfer any tokens here once more
-        // Make sure that he sent enough tokens to cover both amount and fee
-        require(msg.value >= amount + feeAmount, "Bridge: not enough tokens to cover the fee!");
+        // Make sure that user sent enough tokens to cover both amount and fee
+        require(msg.value >= amount + feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
         emit LockNative(sender, receiver, amount, targetChain);
 
         return true;
     }
 
-
-    /// @notice Locks ERC20 tokens on the source chain
-    /// @param token Address of the token to lock
-    /// @param amount The amount of tokens to lock
-    /// @param receiver The receiver of wrapped tokens
-    /// @param targetChain The name of the target chain
-    /// @return True if tokens were locked successfully
-    function lockERC20(
-        address token,
-        uint256 amount,
-        string memory receiver,
-        string memory targetChain
-    )
-    external
-    // If a user wants to lock native tokens - he should provide `amount+fee` native tokens
-    // The fee can be calculated using `calcFee` method (only by the admin)
-    payable
-    isSupportedChain(targetChain)
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFee(amount);
-        TokenFees[token] += feeAmount;
-
-     
-        // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the backend 
-        // before transfering the tokens
-
-        // After this transfer all tokens are in possesion of the bridge contract and they can not be
-        // withdrawn by explicitly calling `ERC20.safeTransferFrom` of `ERC20.transferFrom` because the bridge contract
-        // does not provide allowance of these tokens for anyone. The only way to transfer tokens from the
-        // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
-        // Thus, transfered tokens are locked inside the bridge contract
-        // Transfer additional fee with the initial amount of tokens
-        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
-
-        // Emit the lock event with detailed information
-        emit LockERC20(token, sender, receiver, amount, targetChain);
-
-        return true;
-
-    }
-
-    /// @notice Locks ERC721 token on the source chain
-    /// @param token The address of the token to lock
-    /// @param tokenId The ID of the token to lock
-    /// @param receiver The receiver of wrapped tokens
-    /// @param targetChain The name of the target chain
-    /// @return True if tokens were locked successfully
-    function lockERC721(
-        // TODO are both token and tokenId necessary? 
-        address token,
-        uint256 tokenId,
-        string memory receiver,
-        string memory targetChain
-    ) 
-    external 
-    payable // Fees for ERC721 are payed in wei
-    returns(bool) 
-    {
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        // TODO what amount to set here?
-        uint256 feeAmount = calcFee(1);
-        TokenFees[token] += feeAmount;
-
-     
-        // NOTE ERC721.setApprovalForAll(address(this), true) must be called on the backend 
-        // before transfering the tokens
-
-        IWrappedERC721(token).safeTransferFrom(sender, address(this), tokenId);
-
-        // Emit the lock event with detailed information
-        emit LockERC721(tokenId, sender, receiver, targetChain);
-
-        return true;
-    }
-
-
-    /// @notice Locks ERC1155 token on the source chain
-    /// @param token The address of the token to lock
-    /// @param tokenId The ID of token type
-    /// @param amount The amount of tokens of specifi type
-    /// @param receiver The receiver of wrapped tokens
-    /// @param targetChain The name of the target chain
-    /// @return True if tokens were locked successfully
-    function lockERC1155(
-        address token,
-        uint256 tokenId,
-        uint amount,
-        string memory receiver,
-        string memory targetChain
-    ) 
-    external 
-    payable // Fees for ERC721 are payed in wei
-    returns(bool) 
-    {
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        // TODO what amount to set here?
-        uint256 feeAmount = calcFee(amount);
-        TokenFees[token] += feeAmount;
-
-     
-        // NOTE ERC1155.setApprovalForAll(address(this), true) must be called on the backend 
-        // before transfering the tokens
-
-        IWrappedERC1155(token).safeTransferFrom(sender, address(this), tokenId);
-
-        // Emit the lock event with detailed information
-        emit LockERC1155(tokenId, amount, sender, receiver, targetChain);
-
-        return true;
-    }
-
-    /// @notice Burns tokens on a target chain
-    /// @param token Address of the token to burn (zero address for native tokens)
-    /// @param amount The amount of tokens to burn
-    /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
-    /// @param targetChain The name of the target chain
-    /// @return True if tokens were burnt successfully
-    function burn(
-        address token,
-        uint256 amount,
-        string memory receiver,
-        string memory targetChain
-    )
-    external
-    isSupportedChain(targetChain)
-    nonReentrant
-    returns(bool)
-    {   
-        // Only WrappedERC20 tokens can be burned, because only WrappedERC20 are minted on target chain
-        // Example between Ethereum and Polygon:
-        // Lock: ETH (Ethereum) -> wETH(Polygon)
-        // Burn:
-        //     correct: wETH(Polygon) -> ETH(Ethereum)
-        //     incorrect: MATIC(Polygon) -> ETH(Ethereum)
-
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFee(amount);
-        TokenFees[token] += feeAmount;
-
-        // NOTE ERC20.increaseAllowance(address(this), amount + feeAmount) must be called on the backend 
-        // before transfering the tokens
-
-        // Transfer user's tokens (and a fee) to the bridge contract from target chain account
-        // NOTE This method should be called from the address on the target chain
-        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount + feeAmount);
-        // And burn them immediately
-        // Burn all tokens except the fee
-        IWrappedERC20(token).burn(address(this), amount);
-
-        emit Burn(token, sender, receiver, amount, targetChain);
-
-        return true;
-    }
-
-
-    /// @notice Mints target tokens if the user is permitted to do so
-    /// @param token Address of the token to mint
-    /// @param amount The amount of tokens to mint
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were minted successfully
-    function mintWithPermit(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {   
-        // Only WrappedERC20 tokens can be minted on the target chain. 
-        // Native tokens of target chain can not be an equivalent of any tokens of the original chain
-        address sender = msg.sender;
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has locked tokens on the source chain
-        signatureVerificationERC20(nonce, amount, v, r, s, token, sender);
-        // Mint wrapped tokens to the user's address on the target chain
-        // NOTE This method should be called from the address on the target chain 
-        IWrappedERC20(token).mint(sender, amount);
-
-        emit MintWithPermit(token, sender, amount);
-
-        return true;
-    }
+    /**
+     * NOTE Sections with other types of tokens have `burn` function here. 
+     * There is no scenario where after transfer through the bridge native tokens of the target
+     * chain will be minted to the user's address. Only ERC20, ERC721 or ERC1155 can. Thus no
+     * native tokens can be burnt before transfering tokens backwards.
+     */
 
     /// @notice Unlocks native tokens if the user is permitted to unlock
     /// @param amount The amount of tokens to unlock
@@ -356,196 +176,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return true;
         
     }
-
-    /// @notice Unlocks ERC20 tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
-    /// @param amount The amount of tokens to unlock
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfully
-    function unlockWithPermitERC20(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Check if there is enough custom tokens on the bridge (no fees)
-        require(
-            IWrappedERC20(token).balanceOf(address(this)) >= amount,
-            "Bridge: not enough ERC20 tokens on the bridge balance!"
-        );
-
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationERC20(nonce, amount, v, r, s, token, sender);
-
-        // This is the only way to withdraw locked tokens from the bridge contract
-        // (see `lock` method of this contract)
-        IWrappedERC20(token).safeTransfer(sender, amount);
-
-        emit UnlockWithPermitERC20(token, sender, amount);
-
-        return true;  
-        
-    }
-
-    /// @notice Unlocks ERC721 tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
-    /// @param tokenId The ID of token to unlock
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfully
-    function unlockWithPermitERC721(
-        address token,
-        uint256 tokenId,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Check if there is enough custom tokens on the bridge (no fees)
-        require(
-            IWrappedERC721(token).balanceOf(address(this)) >= 0,
-            "Bridge: not enough ERC721 tokens on the bridge balance!"
-        );
-
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationERC721(nonce, tokenId, v, r, s, token, sender);
-
-        // TODO might be wrong arguments here
-        IWrappedERC721(token).safeTransferFrom(address(this), sender, tokenId);
-
-        emit UnlockWithPermitERC721(tokenId, sender);
-
-        return true;  
-        
-    }
-
-    /// @notice Unlocks ERC1155 tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
-    /// @param tokenId The ID of token type
-    /// @param amount The amount of tokens of the type
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfully
-    function unlockWithPermitERC1155(
-        address token,
-        uint256 tokenId,
-        uint256 amount,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Check if there is enough custom tokens on the bridge (no fees)
-        require(
-            IWrappedERC1155(token).balanceOf(address(this)) >= 0,
-            "Bridge: not enough ERC721 tokens on the bridge balance!"
-        );
-
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationERC1155(nonce, tokenId, v, r, s, amount, sender);
-
-        // TODO might be wrong arguments here
-        IWrappedERC721(token).safeTransferFrom(address(this), sender, amount);
-
-        emit UnlockWithPermitERC1155(tokenId, amount, sender);
-
-        return true;  
-        
-    }
-
-    /// @notice Sets the admin
-    /// @param newAdmin Address of the admin   
-    function setAdmin(address newAdmin) external onlyAdmin {
-        grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
-    }
-
-    /// @notice Sets a new fee rate for bridge operations
-    /// @param newFeeRateBp A new rate in basis points
-    function setFeeRate(uint256 newFeeRateBp) external onlyAdmin {
-        require(newFeeRateBp > 0 && newFeeRateBp <= maxFeeRateBp, "Bridge: fee rate is too high!");
-        feeRateBp = newFeeRateBp;
-    }
-
-    /// @notice Calculates a fee for bridge operations
-    /// @notice Fee can not be less than 1
-    /// @param amount An amount of tokens that were sent
-    /// @return The fee amount in atomic tokens of the chain (e.g. wei in Ethereum)
-    function calcFee(uint256 amount) public view returns(uint256) {
-        uint256 result = amount * feeRateBp / percentDenominator;
-        require(result >= 1, "Bridge: transaction amount too low for fees!");
-        return result;
-    }
-
-
-    /// @notice Withdraws fees accumulated from a specific token operations
-    /// @param token The address of the token (zero address for native token)
-    /// @param amount The amount of fees from a single token to be withdrawn
-    function withdraw(address token, uint256 amount) external nonReentrant onlyAdmin {
-        require(TokenFees[token] != 0, "Bridge: no fees were collected for this token!");
-        require(TokenFees[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
-        
-        TokenFees[token] -= amount;
-        
-        // Custom token
-        if (token != address(0)) {
-            IWrappedERC20(token).safeTransfer(msg.sender, amount);
-
-        // Native token
-        } else {
-            (bool success, ) = msg.sender.call{ value: amount }("");
-            require(success, "Bridge: tokens withdrawal failed!");
-        }
-
-        emit Withdraw(token, msg.sender, amount);
-
-    }
-
-    /// @notice Adds a chain supported by the bridge
-    /// @param chain The name of the chain
-    function setSupportedChain(string memory chain) external onlyAdmin {
-        supportedChains[chain] = true;
-    }
-
-    /// @notice Removes a chain supported by the bridge
-    /// @param chain The name of the chain
-    function removeSupportedChain(string memory chain) external onlyAdmin {
-        supportedChains[chain] = false;
-    }
-
-    //==========Native Tokens Signatures==========
 
     /// @dev Verifies that a signature of PERMIT_DIGEST for native tokens is valid 
     /// @param nonce Prevent replay attacks
@@ -610,7 +240,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         string memory version,
         uint256 chainId, 
         address verifyingAddress
-    ) internal view returns (bytes32) {
+    ) internal pure returns (bytes32) {
             
         return keccak256(
             abi.encode(
@@ -655,7 +285,180 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return permitHash;
     }
 
-    //==========ERC20 Signatures==========
+
+
+
+    //==========ERC20 Tokens Functions==========
+
+    /// @notice Locks ERC20 tokens on the source chain
+    /// @param token Address of the token to lock
+    /// @param amount The amount of tokens to lock
+    /// @param receiver The receiver of wrapped tokens
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were locked successfully
+    function lockERC20(
+        address token,
+        uint256 amount,
+        string memory receiver,
+        string memory targetChain
+    )
+    external
+    // If a user wants to lock tokens - he should provide `feeAmount` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
+    payable
+    isSupportedChain(targetChain)
+    nonReentrant
+    returns(bool)
+    {
+        address sender = msg.sender;
+
+        // Calculate the fee and save it
+        uint256 feeAmount = calcFee(amount);
+        TokenFees[token] += feeAmount;
+
+        // Make sure that user sent enough tokens to cover both amount and fee
+        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+
+        // NOTE ERC20.increaseAllowance(address(this), amount) must be called on the backend 
+        // before transfering the tokens
+
+        // After this transfer all tokens are in possesion of the bridge contract and they can not be
+        // withdrawn by explicitly calling `ERC20.safeTransferFrom` of `ERC20.transferFrom` because the bridge contract
+        // does not provide allowance of these tokens for anyone. The only way to transfer tokens from the
+        // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
+        // Thus, transfered tokens are locked inside the bridge contract
+        // Transfer additional fee with the initial amount of tokens
+        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount);
+
+        // Emit the lock event with detailed information
+        emit LockERC20(token, sender, receiver, amount, targetChain);
+
+        return true;
+
+    }
+
+    /// @notice Burns ERC20 tokens on a target chain
+    /// @param token Address of the token to burn
+    /// @param amount The amount of tokens to burn
+    /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were burnt successfully
+    function burnERC20(
+        address token,
+        uint256 amount,
+        string memory receiver,
+        string memory targetChain
+    )
+    external
+    // If a user wants to burn tokens - he should provide `feeAmount` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
+    payable
+    isSupportedChain(targetChain)
+    nonReentrant
+    returns(bool)
+    {   
+
+        address sender = msg.sender;
+
+        // Calculate the fee and save it
+        uint256 feeAmount = calcFee(amount);
+        TokenFees[token] += feeAmount;
+
+        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+
+        // NOTE ERC20.increaseAllowance(address(this), amount) must be called on the backend 
+        // before transfering the tokens
+
+        // Transfer user's tokens (and a fee) to the bridge contract from target chain account
+        // NOTE This method should be called from the address on the target chain
+        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount);
+        // And burn them immediately
+        // Burn all tokens except the fee
+        IWrappedERC20(token).burn(address(this), amount);
+
+        emit BurnERC20(token, sender, receiver, amount, targetChain);
+
+        return true;
+    }
+
+    /// @notice Mints ERC20 tokens if the user is permitted to do so
+    /// @param token Address of the token to mint
+    /// @param amount The amount of tokens to mint
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @return True if tokens were minted successfully
+    function mintWithPermitERC20(
+        address token,
+        uint256 amount,
+        uint256 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+    external
+    nonReentrant
+    returns(bool)
+    {   
+
+        address sender = msg.sender;
+
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has locked tokens on the source chain
+        signatureVerificationERC20(nonce, amount, v, r, s, token, sender);
+        // Mint wrapped tokens to the user's address on the target chain
+        // NOTE This method should be called from the address on the target chain 
+        IWrappedERC20(token).mint(sender, amount);
+
+        emit MintWithPermitERC20(token, sender, amount);
+
+        return true;
+    }
+
+    /// @notice Unlocks ERC20 tokens if the user is permitted to unlock
+    /// @param token Address of the token to unlock
+    /// @param amount The amount of tokens to unlock
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @return True if tokens were unlocked successfully
+    function unlockWithPermitERC20(
+        address token,
+        uint256 amount,
+        uint256 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+    external
+    nonReentrant
+    returns(bool)
+    {
+        address sender = msg.sender;
+
+        // Check if there is enough custom tokens on the bridge (no fees)
+        require(
+            IWrappedERC20(token).balanceOf(address(this)) >= amount,
+            "Bridge: not enough ERC20 tokens on the bridge balance!"
+        );
+
+
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has burnt tokens on the target chain
+        signatureVerificationERC20(nonce, amount, v, r, s, token, sender);
+
+        // This is the only way to withdraw locked tokens from the bridge contract
+        // (see `lock` method of this contract)
+        IWrappedERC20(token).safeTransfer(sender, amount);
+
+        emit UnlockWithPermitERC20(token, sender, amount);
+
+        return true;  
+        
+    }
+
 
     /// @dev Verifies that a signature of PERMIT_DIGEST for ERC20 tokens is valid 
     /// @param nonce Prevent replay attacks
@@ -718,18 +521,18 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @dev Generates domain separator of the ERC20 token
     /// @dev Used to generate permit digest afterwards
-    /// @param _token The address of the token to be transfered
+    /// @param token The address of the token to be transfered
     /// @param version The version of separator
     /// @param chainId The ID of the current chain
     /// @param verifyingAddress The address of the contract that will verify the signature
     function getDomainSeparatorERC20(
-        address _token,
+        address token,
         string memory version,
         uint256 chainId, 
         address verifyingAddress
     ) internal view returns (bytes32) {
 
-        IWrappedERC20 token = IWrappedERC20(_token);
+        IWrappedERC20 ERC20token = IWrappedERC20(token);
         
         return keccak256(
             abi.encode(
@@ -737,7 +540,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
                 // Token name
-                keccak256(bytes(token.name())),
+                keccak256(bytes(ERC20token.name())),
                 // Version
                 keccak256(bytes(version)),
                 // ChainID
@@ -774,7 +577,170 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return permitHash;
     }
 
-    //==========ERC721 Signatures==========
+
+    //==========ERC721 Tokens Functions==========
+
+    /// @notice Locks ERC721 token on the source chain
+    /// @param token The address of the token to lock
+    /// @param tokenId The ID of the token to lock
+    /// @param receiver The receiver of wrapped tokens
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were locked successfully
+    function lockERC721(
+        // TODO are both token and tokenId necessary? 
+        address token,
+        uint256 tokenId,
+        string memory receiver,
+        string memory targetChain
+    ) 
+    external 
+    // If a user wants to lock tokens - he should provide `feeAmount` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
+    payable 
+    returns(bool) 
+    {
+        address sender = msg.sender;
+
+        // Calculate the fee and save it
+        // TODO what amount to set here?
+        uint256 feeAmount = calcFee(1);
+        TokenFees[token] += feeAmount;
+
+        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+
+        // NOTE ERC721.setApprovalForAll(address(this), true) must be called on the backend 
+        // before transfering the tokens
+
+        IWrappedERC721(token).safeTransferFrom(sender, address(this), tokenId);
+
+        // Emit the lock event with detailed information
+        emit LockERC721(tokenId, sender, receiver, targetChain);
+
+        return true;
+    }
+
+
+    /// @notice Burns ERC721 tokens on a target chain
+    /// @param token Address of the token to burn 
+    /// @param tokenId The ID of the token to lock
+    /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were burnt successfully
+    function burnERC721(
+        address token,
+        uint256 tokenId,
+        string memory receiver,
+        string memory targetChain
+    )
+    external
+    // If a user wants to burn tokens - he should provide `feeAmount` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
+    payable
+    isSupportedChain(targetChain)
+    nonReentrant
+    returns(bool)
+    {   
+
+        address sender = msg.sender;
+
+        // Calculate the fee and save it
+        // TODO what amount to set here?
+        uint256 feeAmount = calcFee(1);
+        TokenFees[token] += feeAmount;
+
+        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+
+        // NOTE ERC721.setApprovalForAll(address(this), true) must be called on the backend 
+        // before transfering the tokens
+
+        IWrappedERC721(token).safeTransferFrom(sender, address(this), tokenId);
+        // Burn all tokens except the fee
+        IWrappedERC721(token).burn(tokenId);
+
+        emit BurnERC721(token, sender, receiver, tokenId, targetChain);
+
+        return true;
+    }
+
+
+    /// @notice Mints ERC721 tokens if the user is permitted to do so
+    /// @param token Address of the token to mint
+    /// @param tokenId The ID of token to mint
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @return True if tokens were minted successfully
+    function mintWithPermitERC721(
+        address token,
+        uint256 tokenId,
+        uint256 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+    external
+    nonReentrant
+    returns(bool)
+    {   
+
+        address sender = msg.sender;
+
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has locked tokens on the source chain
+        signatureVerificationERC721(nonce, tokenId, v, r, s, token, sender);
+        // Mint wrapped tokens to the user's address on the target chain
+        // NOTE This method should be called from the address on the target chain 
+        IWrappedERC721(token).mint(sender, tokenId);
+
+        emit MintWithPermitERC721(token, sender, tokenId);
+
+        return true;
+    }
+
+
+    /// @notice Unlocks ERC721 tokens if the user is permitted to unlock
+    /// @param token Address of the token to unlock
+    /// @param tokenId The ID of token to unlock
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @return True if tokens were unlocked successfully
+    function unlockWithPermitERC721(
+        address token,
+        uint256 tokenId,
+        uint256 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+    external
+    nonReentrant
+    returns(bool)
+    {
+        address sender = msg.sender;
+
+        // Check if there is enough custom tokens on the bridge (no fees)
+        require(
+            IWrappedERC721(token).balanceOf(address(this)) >= 0,
+            "Bridge: not enough ERC721 tokens on the bridge balance!"
+        );
+
+
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has burnt tokens on the target chain
+        signatureVerificationERC721(nonce, tokenId, v, r, s, token, sender);
+
+        // TODO might be wrong arguments here
+        IWrappedERC721(token).safeTransferFrom(address(this), sender, tokenId);
+
+        emit UnlockWithPermitERC721(tokenId, sender);
+
+        return true;  
+        
+    }
+
 
     /// @dev Verifies that a signature of PERMIT_DIGEST for ERC721 tokens is valid 
     /// @param nonce Prevent replay attacks
@@ -810,6 +776,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
             nonces[nonce] = true;
     }
 
+
     /// @dev Generates the digest that is used in signature verification for ERC20 tokens
     /// @param token The address of the token to be transfered
     /// @param receiver The receiver of transfered tokens
@@ -837,18 +804,18 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @dev Generates domain separator of the ERC721 token
     /// @dev Used to generate permit digest afterwards
-    /// @param _token The address of the token to be transfered
+    /// @param token The address of the token to be transfered
     /// @param version The version of separator
     /// @param chainId The ID of the current chain
     /// @param verifyingAddress The address of the contract that will verify the signature
     function getDomainSeparatorERC721(
-        address _token,
+        address token,
         string memory version,
         uint256 chainId, 
         address verifyingAddress
     ) internal view returns (bytes32) {
 
-        IWrappedERC721 token = IWrappedERC721(_token);
+        IWrappedERC721 ERC721token = IWrappedERC721(token);
         
         return keccak256(
             abi.encode(
@@ -856,7 +823,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
                 // Token name
-                keccak256(bytes(token.name())),
+                keccak256(bytes(ERC721token.name())),
                 // Version
                 keccak256(bytes(version)),
                 // ChainID
@@ -894,27 +861,202 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
 
-   //==========ERC1155 Signatures==========
+
+
+
+    //==========ERC1155 Tokens Functions==========
+
+    /// @notice Locks ERC1155 token on the source chain
+    /// @param token The address of the token to lock
+    /// @param tokenId The ID of token type
+    /// @param amount The amount of tokens of specific type
+    /// @param receiver The receiver of wrapped tokens
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were locked successfully
+    function lockERC1155(
+        address token,
+        uint256 tokenId,
+        uint amount,
+        string memory receiver,
+        string memory targetChain
+    ) 
+    external 
+    // If a user wants to lock tokens - he should provide `feeAmount` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
+    payable
+    returns(bool) 
+    {
+        address sender = msg.sender;
+
+        // Calculate the fee and save it
+        // TODO what amount to set here?
+        uint256 feeAmount = calcFee(amount);
+        TokenFees[token] += feeAmount;
+
+        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+
+     
+        // NOTE ERC1155.setApprovalForAll(address(this), true) must be called on the backend 
+        // before transfering the tokens
+
+        IWrappedERC1155(token).safeTransferFrom(sender, address(this), tokenId, amount, bytes("iamtoken"));
+
+        // Emit the lock event with detailed information
+        emit LockERC1155(tokenId, amount, sender, receiver, targetChain);
+
+        return true;
+    }
+
+
+    /// @notice Burns ERC1155 tokens on a target chain
+    /// @param token Address of the token to burn 
+    /// @param tokenId The ID of the token to lock
+    /// @param amount The amount of tokens of specific type
+    /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
+    /// @param targetChain The name of the target chain
+    /// @return True if tokens were burnt successfully
+    function burnERC1155(
+        address token,
+        uint256 tokenId,
+        uint256 amount,
+        string memory receiver,
+        string memory targetChain
+    )
+    external
+    // If a user wants to burn tokens - he should provide `feeAmount` native tokens
+    // The fee can be calculated using `calcFee` method (only by the admin)
+    payable 
+    isSupportedChain(targetChain)
+    nonReentrant
+    returns(bool)
+    {   
+
+        address sender = msg.sender;
+
+        // Calculate the fee and save it
+        // TODO what amount to set here?
+        uint256 feeAmount = calcFee(1);
+        TokenFees[token] += feeAmount;
+
+        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+
+        // NOTE ERC1155.setApprovalForAll(address(this), true) must be called on the backend 
+        // before transfering the tokens
+
+        IWrappedERC1155(token).safeTransferFrom(sender, address(this), tokenId, amount, bytes("iamtoken"));
+        // Burn all tokens except the fee
+        IWrappedERC1155(token).burn(sender, tokenId, amount);
+
+        emit BurnERC1155(token, sender, receiver, tokenId, amount, targetChain);
+
+        return true;
+    }
+
+    /// @notice Mints ERC1155 tokens if the user is permitted to do so
+    /// @param token Address of the token to mint
+    /// @param tokenId The ID of type of tokens
+    /// @param amount The amount of tokens of specific type
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @return True if tokens were minted successfully
+    function mintWithPermitERC1155(
+        address token,
+        uint256 tokenId,
+        uint256 amount,
+        uint256 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+    external
+    nonReentrant
+    returns(bool)
+    {   
+
+        address sender = msg.sender;
+
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has locked tokens on the source chain
+        signatureVerificationERC1155(nonce, token, tokenId, v, r, s, amount, sender);
+        // Mint wrapped tokens to the user's address on the target chain
+        // NOTE This method should be called from the address on the target chain 
+        IWrappedERC1155(token).mint(sender, tokenId, amount);
+
+        emit MintWithPermitERC1155(token, sender, tokenId, amount);
+
+        return true;
+    }
+
+
+    /// @notice Unlocks ERC1155 tokens if the user is permitted to unlock
+    /// @param token Address of the token to unlock
+    /// @param tokenId The ID of token type
+    /// @param amount The amount of tokens of the type
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @return True if tokens were unlocked successfully
+    function unlockWithPermitERC1155(
+        address token,
+        uint256 tokenId,
+        uint256 amount,
+        uint256 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+    external
+    nonReentrant
+    returns(bool)
+    {
+        address sender = msg.sender;
+
+        // Check if there is enough custom tokens on the bridge (no fees)
+        require(
+            IWrappedERC1155(token).balanceOf(address(this), tokenId) >= 0,
+            "Bridge: not enough ERC1155 tokens on the bridge balance!"
+        );
+
+
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has burnt tokens on the target chain
+        signatureVerificationERC1155(nonce, token, tokenId, v, r, s, amount, sender);
+
+        // TODO might be wrong arguments here
+        IWrappedERC1155(token).safeTransferFrom(address(this), sender, tokenId, amount, bytes("iamtoken"));
+
+        emit UnlockWithPermitERC1155(tokenId, amount, sender);
+
+        return true;  
+        
+    }
 
     /// @dev Verifies that a signature of PERMIT_DIGEST for ERC1155 tokens is valid 
     /// @param nonce Prevent replay attacks
     /// @param tokenId The ID of transfered token
+    /// @param token The address of transfered
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    /// @param s 32-64 bytes of the signed PERMIT_DIGEST
+    /// @param amount The amount of tokens of specific type
     /// @param msgSender The address of account on another chain
     function signatureVerificationERC1155(
         uint256 nonce,
+        address token,
         uint256 tokenId,
         uint8 v,
         bytes32 r,
         bytes32 s,
-        address amount,
+        uint256 amount,
         address msgSender
     ) internal {
             require(!nonces[nonce], "Bridge: request already processed!");
 
             bytes32 permitDigest = getPermitDigestERC1155(
+                token,
                 amount,
                 msgSender,
                 tokenId,
@@ -931,16 +1073,18 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @dev Generates the digest that is used in signature verification for ERC1155 tokens
     /// @param amount The amount of tokens of specific type
+    /// @param token The address of transfered token
     /// @param receiver The receiver of transfered tokens
     /// @param tokenId The ID of the transfered token
     /// @param nonce Unique number to prevent replay
     function getPermitDigestERC1155(
-        address amount,
+        address token,
+        uint256 amount,
         address receiver,
         uint256 tokenId,
         uint256 nonce
     ) internal view returns (bytes32) {
-        bytes32 domainSeparator = getDomainSeparatorERC1155("1", block.chainid, address(this));
+        bytes32 domainSeparator = getDomainSeparatorERC1155(token, tokenId, "1", block.chainid, address(this));
         bytes32 typeHash = getPermitTypeHashERC1155(receiver, amount, nonce);
 
         bytes32 permitDigest = keccak256(
@@ -956,26 +1100,28 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @dev Generates domain separator of the ERC1155 token
     /// @dev Used to generate permit digest afterwards
-    /// @param _token The address of the token to be transfered
+    /// @param token The address of the token to be transfered
+    /// @param tokenId The ID of type of tokens
     /// @param version The version of separator
     /// @param chainId The ID of the current chain
     /// @param verifyingAddress The address of the contract that will verify the signature
     function getDomainSeparatorERC1155(
-        address _token,
+        address token,
+        uint tokenId, 
         string memory version,
         uint256 chainId, 
         address verifyingAddress
     ) internal view returns (bytes32) {
 
-        IWrappedERC1155 token = IWrappedERC1155(_token);
+        IWrappedERC1155 ERC1155token = IWrappedERC1155(token);
         
         return keccak256(
             abi.encode(
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ),
-                // Token name
-                keccak256(bytes(token.name())),
+                // Token uri
+                keccak256(bytes(ERC1155token.uri(tokenId))),
                 // Version
                 keccak256(bytes(version)),
                 // ChainID
@@ -986,7 +1132,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         );
 
     }
-
 
     /// @dev Generates the type hash for permit digest of ERC1155 token
     /// @param receiver The receiver of transfered token
@@ -1011,4 +1156,60 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         return permitHash;
     }
+
+
+
+    /// @notice Sets the admin
+    /// @param newAdmin Address of the admin   
+    function setAdmin(address newAdmin) external onlyAdmin {
+        grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
+    }
+
+    /// @notice Sets a new fee rate for bridge operations
+    /// @param newFeeRateBp A new rate in basis points
+    function setFeeRate(uint256 newFeeRateBp) external onlyAdmin {
+        require(newFeeRateBp > 0 && newFeeRateBp <= maxFeeRateBp, "Bridge: fee rate is too high!");
+        feeRateBp = newFeeRateBp;
+    }
+
+    /// @notice Calculates a fee for bridge operations
+    /// @notice Fee can not be less than 1
+    /// @param amount An amount of tokens that were sent
+    /// @return The fee amount in atomic tokens of the chain (e.g. wei in Ethereum)
+    function calcFee(uint256 amount) public view returns(uint256) {
+        uint256 result = amount * feeRateBp / percentDenominator;
+        require(result >= 1, "Bridge: transaction amount too low for fees!");
+        return result;
+    }
+
+
+    /// @notice Withdraws fees accumulated from a specific token operations
+    /// @param token The address of the token which transfers collected fees (zero address for native token)
+    /// @param amount The amount of fees from a single token to be withdrawn
+    function withdraw(address token, uint256 amount) external nonReentrant onlyAdmin {
+        require(TokenFees[token] != 0, "Bridge: no fees were collected for this token!");
+        require(TokenFees[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
+        
+        TokenFees[token] -= amount;
+        
+        (bool success, ) = msg.sender.call{ value: amount }("");
+        require(success, "Bridge: tokens withdrawal failed!");
+
+        emit Withdraw(msg.sender, amount);
+
+    }
+
+    /// @notice Adds a chain supported by the bridge
+    /// @param chain The name of the chain
+    function setSupportedChain(string memory chain) external onlyAdmin {
+        supportedChains[chain] = true;
+    }
+
+    /// @notice Removes a chain supported by the bridge
+    /// @param chain The name of the chain
+    function removeSupportedChain(string memory chain) external onlyAdmin {
+        supportedChains[chain] = false;
+    }
+
+
 }
