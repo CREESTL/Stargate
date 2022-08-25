@@ -165,7 +165,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationNative(nonce, amount, v, r, s, sender);
+        signatureVerificationNative(amount, sender, nonce, v, r, s);
 
         // Transfer native tokens of the original chain from the bridge to the caller
         (bool success, ) = sender.call{ value: amount }("");
@@ -178,25 +178,25 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
     /// @dev Verifies that a signature of PERMIT_DIGEST for native tokens is valid 
-    /// @param nonce Prevent replay attacks
     /// @param amount The amount of tokens of the digest
+    /// @param msgSender The address of account on another chain
+    /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @param msgSender The address of account on another chain
     function signatureVerificationNative(
-        uint256 nonce,
         uint256 amount,
+        address msgSender,
+        uint256 nonce,
         uint8 v,
         bytes32 r,
-        bytes32 s,
-        address msgSender
+        bytes32 s
     ) internal {
             require(!nonces[nonce], "Bridge: request already processed!");
 
             bytes32 permitDigest = getPermitDigestNative(
-                msgSender,
                 amount,
+                msgSender,
                 nonce
             );
 
@@ -209,16 +209,16 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
     /// @dev Generates the digest that is used in signature verification for native tokens
-    /// @param receiver The receiver of transfered tokens
     /// @param amount The amount of tokens to be transfered
+    /// @param receiver The receiver of transfered tokens
     /// @param nonce Unique number to prevent replay
     function getPermitDigestNative(
-        address receiver,
         uint256 amount,
+        address receiver,
         uint256 nonce
     ) internal view returns (bytes32) {
         bytes32 domainSeparator = getDomainSeparatorNative("1", block.chainid, address(this));
-        bytes32 typeHash = getPermitTypeHashNative(receiver, amount, nonce);
+        bytes32 typeHash = getPermitTypeHashNative(amount, receiver, nonce);
 
         bytes32 permitDigest = keccak256(
             abi.encodePacked(
@@ -262,12 +262,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
 
     /// @dev Generates the type hash for permit digest of native token
-    /// @param receiver The receiver of transfered tokens
     /// @param amount The amount of tokens to be transfered
+    /// @param receiver The receiver of transfered tokens
     /// @param nonce Unique number to prevent replay
     function getPermitTypeHashNative(
-        address receiver,
         uint256 amount,
+        address receiver,
         uint256 nonce
     ) internal pure returns (bytes32) {
 
@@ -406,7 +406,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has locked tokens on the source chain
-        signatureVerificationERC20(nonce, amount, v, r, s, token, sender);
+        signatureVerificationERC20(token, amount, nonce, sender, v, r, s);
         // Mint wrapped tokens to the user's address on the target chain
         // NOTE This method should be called from the address on the target chain 
         IWrappedERC20(token).mint(sender, amount);
@@ -447,7 +447,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationERC20(nonce, amount, v, r, s, token, sender);
+        signatureVerificationERC20(token, amount, nonce, sender, v, r, s);
 
         // This is the only way to withdraw locked tokens from the bridge contract
         // (see `lock` method of this contract)
@@ -461,28 +461,28 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
 
     /// @dev Verifies that a signature of PERMIT_DIGEST for ERC20 tokens is valid 
-    /// @param nonce Prevent replay attacks
+    /// @param token The address of transfered token
     /// @param amount The amount of tokens of the digest
+    /// @param msgSender The address of account on another chain
+    /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @param token The address of transfered token
-    /// @param msgSender The address of account on another chain
     function signatureVerificationERC20(
-        uint256 nonce,
+        address token,
         uint256 amount,
+        uint256 nonce,
+        address msgSender,
         uint8 v,
         bytes32 r,
-        bytes32 s,
-        address token,
-        address msgSender
+        bytes32 s
     ) internal {
             require(!nonces[nonce], "Bridge: request already processed!");
 
             bytes32 permitDigest = getPermitDigestERC20(
                 token,
-                msgSender,
                 amount,
+                msgSender,
                 nonce
             );
 
@@ -496,17 +496,17 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @dev Generates the digest that is used in signature verification for ERC20 tokens
     /// @param token The address of the token to be transfered
-    /// @param receiver The receiver of transfered tokens
     /// @param amount The amount of tokens to be transfered
+    /// @param receiver The receiver of transfered tokens
     /// @param nonce Unique number to prevent replay
     function getPermitDigestERC20(
         address token,
-        address receiver,
         uint256 amount,
+        address receiver,
         uint256 nonce
     ) internal view returns (bytes32) {
         bytes32 domainSeparator = getDomainSeparatorERC20(token, "1", block.chainid, address(this));
-        bytes32 typeHash = getPermitTypeHashERC20(receiver, amount, nonce);
+        bytes32 typeHash = getPermitTypeHashERC20(amount, receiver, nonce);
 
         bytes32 permitDigest = keccak256(
             abi.encodePacked(
@@ -554,12 +554,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
 
     /// @dev Generates the type hash for permit digest of ERC20 token
-    /// @param receiver The receiver of transfered tokens
     /// @param amount The amount of tokens to be transfered
+    /// @param receiver The receiver of transfered tokens
     /// @param nonce Unique number to prevent replay
     function getPermitTypeHashERC20(
-        address receiver,
         uint256 amount,
+        address receiver,
         uint256 nonce
     ) internal pure returns (bytes32) {
 
@@ -587,7 +587,6 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param targetChain The name of the target chain
     /// @return True if tokens were locked successfully
     function lockERC721(
-        // TODO are both token and tokenId necessary? 
         address token,
         uint256 tokenId,
         string memory receiver,
@@ -614,7 +613,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         IWrappedERC721(token).safeTransferFrom(sender, address(this), tokenId);
 
         // Emit the lock event with detailed information
-        emit LockERC721(tokenId, sender, receiver, targetChain);
+        emit LockERC721(token, tokenId, sender, receiver, targetChain);
 
         return true;
     }
@@ -657,7 +656,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Burn all tokens except the fee
         IWrappedERC721(token).burn(tokenId);
 
-        emit BurnERC721(token, sender, receiver, tokenId, targetChain);
+        emit BurnERC721(token, tokenId, sender, receiver, targetChain);
 
         return true;
     }
@@ -693,7 +692,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // NOTE This method should be called from the address on the target chain 
         IWrappedERC721(token).mint(sender, tokenId);
 
-        emit MintWithPermitERC721(token, sender, tokenId);
+        emit MintWithPermitERC721(token, tokenId, sender);
 
         return true;
     }
@@ -732,10 +731,9 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // This will prove that the user has burnt tokens on the target chain
         signatureVerificationERC721(nonce, tokenId, v, r, s, token, sender);
 
-        // TODO might be wrong arguments here
         IWrappedERC721(token).safeTransferFrom(address(this), sender, tokenId);
 
-        emit UnlockWithPermitERC721(tokenId, sender);
+        emit UnlockWithPermitERC721(token, tokenId, sender);
 
         return true;  
         
@@ -763,8 +761,8 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
             bytes32 permitDigest = getPermitDigestERC721(
                 token,
-                msgSender,
                 tokenId,
+                msgSender,
                 nonce
             );
 
@@ -779,17 +777,17 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @dev Generates the digest that is used in signature verification for ERC20 tokens
     /// @param token The address of the token to be transfered
-    /// @param receiver The receiver of transfered tokens
     /// @param tokenId The ID of the transfered token
+    /// @param receiver The receiver of transfered tokens
     /// @param nonce Unique number to prevent replay
     function getPermitDigestERC721(
         address token,
-        address receiver,
         uint256 tokenId,
+        address receiver,
         uint256 nonce
     ) internal view returns (bytes32) {
         bytes32 domainSeparator = getDomainSeparatorERC721(token, "1", block.chainid, address(this));
-        bytes32 typeHash = getPermitTypeHashERC721(receiver, tokenId, nonce);
+        bytes32 typeHash = getPermitTypeHashERC721(tokenId, receiver, nonce);
 
         bytes32 permitDigest = keccak256(
             abi.encodePacked(
@@ -837,12 +835,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
 
     /// @dev Generates the type hash for permit digest of ERC721 token
-    /// @param receiver The receiver of transfered token
     /// @param tokenId The ID of transfered token
+    /// @param receiver The receiver of transfered token
     /// @param nonce Unique number to prevent replay
     function getPermitTypeHashERC721(
-        address receiver,
         uint256 tokenId,
+        address receiver,
         uint256 nonce
     ) internal pure returns (bytes32) {
 
@@ -902,7 +900,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         IWrappedERC1155(token).safeTransferFrom(sender, address(this), tokenId, amount, bytes("iamtoken"));
 
         // Emit the lock event with detailed information
-        emit LockERC1155(tokenId, amount, sender, receiver, targetChain);
+        emit LockERC1155(token, tokenId, sender, receiver, amount, targetChain);
 
         return true;
     }
@@ -947,7 +945,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Burn all tokens except the fee
         IWrappedERC1155(token).burn(sender, tokenId, amount);
 
-        emit BurnERC1155(token, sender, receiver, tokenId, amount, targetChain);
+        emit BurnERC1155(token, tokenId, sender, receiver, amount, targetChain);
 
         return true;
     }
@@ -979,12 +977,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has locked tokens on the source chain
-        signatureVerificationERC1155(nonce, token, tokenId, v, r, s, amount, sender);
+        signatureVerificationERC1155(token, tokenId, amount, sender, nonce, v, r, s);
         // Mint wrapped tokens to the user's address on the target chain
         // NOTE This method should be called from the address on the target chain 
         IWrappedERC1155(token).mint(sender, tokenId, amount);
 
-        emit MintWithPermitERC1155(token, sender, tokenId, amount);
+        emit MintWithPermitERC1155(token, tokenId, sender, amount);
 
         return true;
     }
@@ -1023,43 +1021,42 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationERC1155(nonce, token, tokenId, v, r, s, amount, sender);
+        signatureVerificationERC1155(token, tokenId, amount, sender, nonce, v, r, s);
 
-        // TODO might be wrong arguments here
         IWrappedERC1155(token).safeTransferFrom(address(this), sender, tokenId, amount, bytes("iamtoken"));
 
-        emit UnlockWithPermitERC1155(tokenId, amount, sender);
+        emit UnlockWithPermitERC1155(token, tokenId, sender, amount);
 
         return true;  
         
     }
 
     /// @dev Verifies that a signature of PERMIT_DIGEST for ERC1155 tokens is valid 
-    /// @param nonce Prevent replay attacks
-    /// @param tokenId The ID of transfered token
     /// @param token The address of transfered
+    /// @param tokenId The ID of transfered token
+    /// @param amount The amount of tokens of specific type
+    /// @param msgSender The address of account on another chain
+    /// @param nonce Prevent replay attacks
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param s 32-64 bytes of the signed PERMIT_DIGEST
-    /// @param amount The amount of tokens of specific type
-    /// @param msgSender The address of account on another chain
     function signatureVerificationERC1155(
-        uint256 nonce,
         address token,
         uint256 tokenId,
+        uint256 amount,
+        address msgSender,
+        uint256 nonce,
         uint8 v,
         bytes32 r,
-        bytes32 s,
-        uint256 amount,
-        address msgSender
+        bytes32 s
     ) internal {
             require(!nonces[nonce], "Bridge: request already processed!");
 
             bytes32 permitDigest = getPermitDigestERC1155(
                 token,
+                tokenId,
                 amount,
                 msgSender,
-                tokenId,
                 nonce
             );
 
@@ -1074,18 +1071,18 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @dev Generates the digest that is used in signature verification for ERC1155 tokens
     /// @param amount The amount of tokens of specific type
     /// @param token The address of transfered token
-    /// @param receiver The receiver of transfered tokens
     /// @param tokenId The ID of the transfered token
+    /// @param receiver The receiver of transfered tokens
     /// @param nonce Unique number to prevent replay
     function getPermitDigestERC1155(
         address token,
+        uint256 tokenId,
         uint256 amount,
         address receiver,
-        uint256 tokenId,
         uint256 nonce
     ) internal view returns (bytes32) {
         bytes32 domainSeparator = getDomainSeparatorERC1155(token, tokenId, "1", block.chainid, address(this));
-        bytes32 typeHash = getPermitTypeHashERC1155(receiver, amount, nonce);
+        bytes32 typeHash = getPermitTypeHashERC1155(amount, receiver, nonce);
 
         bytes32 permitDigest = keccak256(
             abi.encodePacked(
@@ -1134,12 +1131,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
     /// @dev Generates the type hash for permit digest of ERC1155 token
-    /// @param receiver The receiver of transfered token
     /// @param amount The amount of tokens of specific type
+    /// @param receiver The receiver of transfered token
     /// @param nonce Unique number to prevent replay
     function getPermitTypeHashERC1155(
-        address receiver,
         uint256 amount,
+        address receiver,
         uint256 nonce
     ) internal pure returns (bytes32) {
 

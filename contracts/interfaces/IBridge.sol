@@ -262,34 +262,38 @@ interface IBridge {
     );
 
     /// @notice Indicates that ERC721 tokens were locked in the source chain
-    /// @param tokenId ID of the token to lock
+    /// @param token The address of token to lock
+    /// @param tokenId The ID of the token to lock
     /// @param sender The sender of the locking transaction
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
     event LockERC721(
+        address indexed token,
         uint256 indexed tokenId,
         address indexed sender,
-        string indexed receiver,
+        string receiver,
         string targetChain
     );
 
 
     /// @notice Indicates that ERC1155 tokens were locked in the source chain
-    /// @param tokenId ID of the type of tokens
+    /// @param token The address of token to lock
+    /// @param tokenId The ID of the type of tokens
     /// @param amount The amount of tokens of specific type
     /// @param sender The sender of the locking transaction
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
     event LockERC1155(
+        address indexed token,
         uint256 indexed tokenId,
-        uint256 amount,
         address indexed sender,
-        string indexed receiver,
+        string receiver,
+        uint256 amount,
         string targetChain
     );
 
     /// @notice Indicates that ERC20 tokens were burnt in the target chain
-    /// @param token Address of the token to burn
+    /// @param token The address of the token to burn
     /// @param sender The sender of the burning transaction
     /// @param receiver The receiver of unlocked tokens
     /// @param amount The amount of tokens to burn
@@ -297,37 +301,37 @@ interface IBridge {
     event BurnERC20(
         address indexed token,
         address indexed sender,
-        string receiver,
-        uint256 indexed amount,
+        string indexed receiver,
+        uint256 amount,
         string targetChain
     );
 
     /// @notice Indicates that ERC721 tokens were burnt in the target chain
     /// @param token Address of the token to burn
+    /// @param tokenId The ID of transfered token
     /// @param sender The sender of the burning transaction
     /// @param receiver The receiver of unlocked tokens
-    /// @param tokenId The ID of transfered token
     /// @param targetChain The name of the source chain
     event BurnERC721(
         address indexed token,
+        uint256 indexed tokenId,
         address indexed sender,
         string receiver,
-        uint256 indexed tokenId,
         string targetChain
     );
 
     /// @notice Indicates that ERC1155 tokens were burnt in the target chain
     /// @param token Address of the token to burn
+    /// @param tokenId The ID of transfered token
     /// @param sender The sender of the burning transaction
     /// @param receiver The receiver of unlocked tokens
-    /// @param tokenId The ID of transfered token
     /// @param amount The amount of tokens to burn
     /// @param targetChain The name of the source chain
     event BurnERC1155(
         address indexed token,
+        uint256 indexed tokenId,
         address indexed sender,
         string receiver,
-        uint256 indexed tokenId,
         uint256 amount,
         string targetChain
     );
@@ -345,23 +349,23 @@ interface IBridge {
 
     /// @notice Indicates that ERC721 tokens were minted by permitted user
     /// @param token Address of the token to mint
-    /// @param receiver Address of the wallet in the target chain
     /// @param tokenId The ID of transfered token
+    /// @param receiver Address of the wallet in the target chain
     event MintWithPermitERC721(
         address indexed token,
-        address indexed receiver,
-        uint256 tokenId
+        uint256 indexed tokenId,
+        address indexed receiver
     );
 
     /// @notice Indicates that ERC1155 tokens were minted by permitted user
     /// @param token Address of the token to mint
-    /// @param receiver Address of the wallet in the target chain
     /// @param tokenId The ID of transfered token
+    /// @param receiver Address of the wallet in the target chain
     /// @param amount The amount of tokens of specific type
     event MintWithPermitERC1155(
         address indexed token,
+        uint256 indexed tokenId,
         address indexed receiver,
-        uint256 tokenId,
         uint256 amount
     );
 
@@ -384,21 +388,25 @@ interface IBridge {
     );
 
     /// @notice Indicates that ERC721 tokens were unlocked by permitted user
+    /// @param token The address of token to unlock
     /// @param tokenId ID of unlocked token
     /// @param receiver Address of the wallet in the source chain
     event UnlockWithPermitERC721(
+        address indexed token, 
         uint256 indexed tokenId,
         address indexed receiver
     );
 
     /// @notice Indicates that ERC1155 tokens were unlocked by permitted user
+    /// @param token The address of token to unlock
     /// @param tokenId ID of type of tokens
     /// @param amount The amount of tokens to unlock
     /// @param receiver Address of the wallet in the source chain
     event UnlockWithPermitERC1155(
+        address indexed token,
         uint256 indexed tokenId,
-        uint256 indexed amount,
-        address receiver
+        address indexed receiver,
+        uint256 amount
     );
 
     /// @notice Indicates that token fees were withdrawn
