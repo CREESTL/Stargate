@@ -62,7 +62,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     constructor(
         address _botMessenger
     ) { 
-        require(_botMessenger != address(0));
+        require(_botMessenger != address(0), "Bridge: default bot messenger can not be zero address!");
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // The provided address gets a special role (used in signature verification)
@@ -715,7 +715,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Check if there is enough custom tokens on the bridge (no fees)
         require(
-            IWrappedERC721(token).balanceOf(address(this)) >= 0,
+            IWrappedERC721(token).balanceOf(address(this)) > 0,
             "Bridge: not enough ERC721 tokens on the bridge balance!"
         );
 
@@ -1002,7 +1002,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Check if there is enough custom tokens on the bridge (no fees)
         require(
-            IWrappedERC1155(token).balanceOf(address(this), tokenId) >= 0,
+            IWrappedERC1155(token).balanceOf(address(this), tokenId) > 0,
             "Bridge: not enough ERC1155 tokens on the bridge balance!"
         );
 
@@ -1143,11 +1143,15 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
 
+    //==========Helper Function==========
+
 
     /// @notice Sets the admin
     /// @param newAdmin Address of the admin   
     function setAdmin(address newAdmin) external onlyAdmin {
+        require(newAdmin != address(0), "Bridge: new admin can not have a zero address!");
         grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
+        emit SetAdmin(newAdmin);
     }
 
     /// @notice Sets a new fee rate for bridge operations
@@ -1155,6 +1159,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     function setFeeRate(uint256 newFeeRateBp) external onlyAdmin {
         require(newFeeRateBp > 0 && newFeeRateBp <= maxFeeRateBp, "Bridge: fee rate is too high!");
         feeRateBp = newFeeRateBp;
+        emit SetFeeRate(newFeeRateBp);
     }
 
     /// @notice Calculates a fee for bridge operations
@@ -1186,15 +1191,17 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
     /// @notice Adds a chain supported by the bridge
-    /// @param chain The name of the chain
-    function setSupportedChain(string memory chain) external onlyAdmin {
-        supportedChains[chain] = true;
+    /// @param newChain The name of the chain
+    function setSupportedChain(string memory newChain) external onlyAdmin {
+        supportedChains[newChain] = true;
+        emit SetNewChain(newChain);
     }
 
     /// @notice Removes a chain supported by the bridge
-    /// @param chain The name of the chain
-    function removeSupportedChain(string memory chain) external onlyAdmin {
-        supportedChains[chain] = false;
+    /// @param oldChain The name of the chain
+    function removeSupportedChain(string memory oldChain) external onlyAdmin {
+        supportedChains[oldChain] = false;
+        emit RemoveChain(oldChain);
     }
 
 

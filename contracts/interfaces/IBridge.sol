@@ -417,4 +417,27 @@ interface IBridge {
         uint256 amount
     );
 
+    /// @notice Indicates that the a admin was set
+    /// @param newAdmin The address of a new admin
+    event SetAdmin(
+        address indexed newAdmin
+    );
+
+    /// @notice Indicates that a new fee rate was set
+    /// @param newFeeRateBp A new fee rate in basis points
+    event SetFeeRate(
+        uint256 indexed newFeeRateBp
+    );
+
+    /// @notice Indicates that a new supported chain was set
+    /// @param newChain The name of a new supported chain
+    event SetNewChain(
+        string indexed newChain
+    );
+
+    /// @notice Indicates that a chain is no longer supported
+    /// @param oldChain The name of a previously supported chain
+    event RemoveChain(
+        string indexed oldChain
+    );
 }

@@ -97,3 +97,21 @@ describe('ERC1155 Token', () => {
   	
   });  
 });
+
+describe("ERC1155 Token extras", async () => {
+  const addressZero = "0x0000000000000000000000000000000000000000";
+  it('Should fail to initialize with wrong arguments', async() => {
+    [ownerAcc, clientAcc1, clientAcc2, bridgeAcc] = await ethers.getSigners();
+
+    let tokenTx = await ethers.getContractFactory("WrappedERC1155");
+    token = await tokenTx.deploy();
+
+    await token.deployed();
+    
+    await expect(token.initialize("", bridgeAcc.address))
+    .to.be.revertedWith("ERC1155: initial token URI can not be empty!");
+
+    await expect(token.initialize("IAMTOKENURI", addressZero))
+    .to.be.revertedWith("ERC1155: initial bridge address can not be a zero address!");
+  }); 
+});

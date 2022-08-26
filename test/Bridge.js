@@ -149,9 +149,79 @@ describe('Bridge', () => {
       	signature.s
       	)).to.be.revertedWith("Bridge: not enough native tokens on the bridge balance!");
     });
+
+
+    it('Should fail to unlock same native tokens twice', async() => {
+
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      await bridge.setSupportedChain("Ala");
+
+      // Transfer ether to the bridge and lock it there
+      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum.mul(5)}))
+      .to.emit(bridge, "LockNative")
+      // First two parameters are indexed (hashed) in the event, so their value is uknown 
+      .withArgs(anyValue, anyValue, amount, "Ala");
+
+      // We did not provide the bridge with any native tokens so far. So it can not send them back
+      let domainSeparator = getDomainSeparatorNative("Native", '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashNative(clientAcc1.address, amount, 0)
+      let permitDigest = getPermitDigestNative(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestNative(permitDigest, botMessenger);
+
+      await bridge.connect(clientAcc1).unlockWithPermitNative(
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+        );
+
+      // Use the same nonce here
+      await expect(bridge.connect(clientAcc1).unlockWithPermitNative(
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+        )).to.be.revertedWith("Bridge: request already processed!");
+    });
+
+    it('Should fail to unlock native tokens with invalid signature', async() => {
+
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+      let sum = amount.add(fee);
+
+      await bridge.setSupportedChain("Ala");
+
+      // Transfer ether to the bridge and lock it there
+      await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
+      .to.emit(bridge, "LockNative")
+      // First two parameters are indexed (hashed) in the event, so their value is uknown 
+      .withArgs(anyValue, anyValue, amount, "Ala");
+
+      // We did not provide the bridge with any native tokens so far. So it can not send them back
+      let domainSeparator = getDomainSeparatorNative("Native", '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashNative(clientAcc1.address, amount, 1)
+      let permitDigest = getPermitDigestNative(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestNative(permitDigest, botMessenger);
+
+      await expect(bridge.connect(clientAcc1).unlockWithPermitNative(
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+        )).to.be.revertedWith("Bridge: invalid signature!");
+    });
+
   });
 
   describe("ERC20 Tokens", () => {
+
   	it('Should mint ERC20 tokens to users', async() => {
 
   		let amount = ethers.utils.parseUnits("10", 12);
@@ -174,6 +244,28 @@ describe('Bridge', () => {
       	signature.s
       	)).to.emit(bridge, "MintWithPermitERC20").withArgs(tokenERC20.address, clientAcc1.address, amount);
       expect(await tokenERC20.balanceOf(clientAcc1.address)).to.equal(amount);
+
+    });
+
+    it('Should failt to mint ERC20 tokens with invalid signature', async() => {
+
+      let amount = ethers.utils.parseUnits("10", 12);
+
+      // The only way to mint bridge tokens is to use `mintWithPermitERC20` method but it requires 
+      // a signature
+      let domainSeparator = getDomainSeparatorERC20((await tokenERC20.name()), '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashERC20(clientAcc1.address, amount, 1)
+      let permitDigest = getPermitDigestERC20(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestERC20(permitDigest, botMessenger);
+
+      await expect(bridge.connect(clientAcc1).mintWithPermitERC20(
+        tokenERC20.address,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+        )).to.be.revertedWith("Bridge: invalid signature!");
 
     });
 
@@ -253,12 +345,27 @@ describe('Bridge', () => {
       	)).to.emit(bridge, "UnlockWithPermitERC20").withArgs(anyValue, anyValue, amount);
     });
 
-  	it('Should fail to lock ERC20 tokens if sender does not have enough tokens', async() => {
+  	it('Should fail to lock ERC20 tokens if not enough native tokens were sent', async() => {
 
   		let amount = ethers.utils.parseEther('1');
   		let fee = await bridge.calcFee(amount);
 
   		await bridge.setSupportedChain("Ala");
+
+      await tokenERC20.connect(clientAcc1).increaseAllowance(bridge.address, amount);
+
+      // We did not provide the caller (client) with any ERC tokens so far. So the bridge can not 
+      // tranfer them from user's adrress fo the bridge itself
+      await expect(bridge.connect(clientAcc1).lockERC20(tokenERC20.address, amount, clientAcc1.address, "Ala", {value: fee / 2}))
+      .to.be.revertedWith("Bridge: not enough native tokens were sent to cover the fees!");
+    });
+
+    it('Should fail to lock ERC20 tokens if sender does not have enough tokens', async() => {
+
+      let amount = ethers.utils.parseEther('1');
+      let fee = await bridge.calcFee(amount);
+
+      await bridge.setSupportedChain("Ala");
 
       await tokenERC20.connect(clientAcc1).increaseAllowance(bridge.address, amount);
 
@@ -329,6 +436,35 @@ describe('Bridge', () => {
       .to.be.revertedWith("ERC20: burn amount exceeds balance");
 
     });
+
+    it('Should fail to burn ERC20 tokens if not enought native tokens were sent', async() => {
+
+      let amount = ethers.utils.parseUnits("10", 12);
+      let fee = await bridge.calcFee(amount);
+
+      await bridge.setSupportedChain("ETH");
+
+      // The only way to mint bridge tokens is to use `mintWithPermit` method but it requires 
+      // a signature
+      domainSeparator = getDomainSeparatorERC20((await tokenERC20.name()), '1', chainId, bridge.address);
+      typeHash = getPermitTypeHashERC20(clientAcc1.address, amount, 0)
+      permitDigest = getPermitDigestERC20(domainSeparator, typeHash);
+      signature = getSignatureFromDigestERC20(permitDigest, botMessenger);
+
+      await bridge.connect(clientAcc1).mintWithPermitERC20(
+        tokenERC20.address,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+        );
+
+      await expect(bridge.connect(clientAcc1).burnERC20(tokenERC20.address, amount, clientAcc1.address, "ETH", {value: fee / 2}))
+      .to.be.revertedWith("Bridge: not enough native tokens were sent to cover the fees!");
+
+    });
+
   });
 
 
@@ -386,6 +522,29 @@ describe('Bridge', () => {
         signature.r,
         signature.s
         )).to.be.revertedWith("Bridge: request already processed!");
+
+    });
+
+
+    it('Should fail to mint ERC721 tokens with invalid signature', async() => {
+
+      let tokenId = 777;
+
+      let domainSeparator = getDomainSeparatorERC721((await tokenERC721.name()), '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashERC721(clientAcc1.address, tokenId, 0)
+      let permitDigest = getPermitDigestERC721(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestERC721(permitDigest, botMessenger);
+      
+
+      // Try to mint with the same nonce
+      await expect(bridge.connect(clientAcc1).mintWithPermitERC721(
+        tokenERC721.address,
+        tokenId,
+        1,
+        signature.v,
+        signature.r,
+        signature.s
+        )).to.be.revertedWith("Bridge: invalid signature!");
 
     });
 
@@ -451,26 +610,62 @@ describe('Bridge', () => {
       .to.be.revertedWith("ERC721: invalid token ID");
     });
 
-    it('Should fail to unlock ERC721 tokens if bridge does not have token with correct token ID', async() => {
+    it('Should fail to lock ERC721 tokens if not enough native tokens were sent', async() => {
+
 
       let amount = 1;
       let tokenId = 777;
       let fee = await bridge.calcFee(amount);
 
-      // We did not provide the bridge with any native tokens so far. So it can not send them back
-      domainSeparator = getDomainSeparatorERC721((await tokenERC721.name()), '1', chainId, bridge.address);
-      typeHash = getPermitTypeHashERC721(clientAcc1.address, tokenId, 0)
-      permitDigest = getPermitDigestERC721(domainSeparator, typeHash);
-      signature = getSignatureFromDigestERC721(permitDigest, botMessenger);
+      await bridge.setSupportedChain("Ala");
 
-      await expect(bridge.connect(clientAcc1).unlockWithPermitERC721(
+      // Let bridge transfer tokens from client to bridge
+      await tokenERC721.connect(clientAcc1).setApprovalForAll(bridge.address, true);
+
+      let domainSeparator = getDomainSeparatorERC721((await tokenERC721.name()), '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashERC721(clientAcc1.address, tokenId, 0)
+      let permitDigest = getPermitDigestERC721(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestERC721(permitDigest, botMessenger);
+      
+      await bridge.connect(clientAcc1).mintWithPermitERC721(
         tokenERC721.address,
         tokenId,
         0,
         signature.v,
         signature.r,
         signature.s
-        )).to.be.revertedWith("ERC721: invalid token ID");
+        );
+
+      // Lock tokens. 
+      // Call from the same address as in the signature!
+      await expect(await bridge.connect(clientAcc1).lockERC721(tokenERC721.address, tokenId, clientAcc1.address, "Ala", {value: fee / 2}))
+      .to.be.revertedWith("Bridge: not enough native tokens were sent to cover the fees!");
+
+    });
+
+    it('Should fail to unlock ERC721 tokens if bridge does not have token with correct token ID', async() => {
+
+      let amount = 1;
+      let tokenId = 777;
+      let fee = await bridge.calcFee(amount);
+
+      await tokenERC721.connect(clientAcc1).setApprovalForAll(bridge.address, true);
+
+
+      domainSeparator = getDomainSeparatorERC721((await tokenERC721.name()), '1', chainId, bridge.address);
+      typeHash = getPermitTypeHashERC721(clientAcc1.address, 888, 1)
+      permitDigest = getPermitDigestERC721(domainSeparator, typeHash);
+      signature = getSignatureFromDigestERC721(permitDigest, botMessenger);
+
+      // Try to unlock tokens
+      await expect(bridge.connect(clientAcc1).unlockWithPermitERC721(
+        tokenERC721.address,
+        888,
+        1,
+        signature.v,
+        signature.r,
+        signature.s
+        )).to.be.revertedWith("Bridge: not enough ERC721 tokens on the bridge balance!");
     });
 
     it('Should burn ERC721 tokens', async() => {
@@ -514,9 +709,37 @@ describe('Bridge', () => {
       .to.be.revertedWith("ERC721: invalid token ID");
 
     });
+
+    it('Should fail to burn ERC721 tokens if not enough native tokens were sent', async() => {
+
+      let amount = 1;
+      let tokenId = 777;
+      let fee = await bridge.calcFee(amount);
+
+      await bridge.setSupportedChain("ETH");
+
+
+      let domainSeparator = getDomainSeparatorERC721((await tokenERC721.name()), '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashERC721(clientAcc1.address, tokenId, 0)
+      let permitDigest = getPermitDigestERC721(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestERC721(permitDigest, botMessenger);
+
+      await bridge.connect(clientAcc1).mintWithPermitERC721(
+        tokenERC721.address,
+        tokenId,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+        );
+
+      await expect(bridge.connect(clientAcc1).burnERC721(tokenERC721.address, tokenId, clientAcc1.address, "ETH", {value: fee / 2}))
+      .to.be.revertedWith("Bridge: not enough native tokens were sent to cover the fees!");
+
+    });
+
   });
   
-
 
 
   describe("ERC1155 tokens", () => {
@@ -579,6 +802,28 @@ describe('Bridge', () => {
         signature.r,
         signature.s
         )).to.be.revertedWith("Bridge: request already processed!");
+
+    });
+
+    it('Should fail to mint ERC1155 tokens with invalid signature', async() => {
+
+      let tokenId = 444;
+      let amount = 10;
+
+      let domainSeparator = getDomainSeparatorERC1155((await tokenERC1155.uri(tokenId)), '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashERC1155(clientAcc1.address, amount, 0)
+      let permitDigest = getPermitDigestERC1155(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestERC1155(permitDigest, botMessenger);
+      
+      await expect(bridge.connect(clientAcc1).mintWithPermitERC1155(
+        tokenERC1155.address,
+        tokenId,
+        amount,
+        1, 
+        signature.v,
+        signature.r,
+        signature.s
+        )).to.be.revertedWith("Bridge: invalid signature!");
 
     });
 
@@ -646,19 +891,23 @@ describe('Bridge', () => {
       .to.be.revertedWith("ERC1155: insufficient balance for transfer");
     });
 
-    it('Should fail to unlock ERC1155 tokens if bridge does not have enough tokens of a given type', async() => {
+    it('Should fail to lock ERC1155 tokens if not enough native tokens were sent', async() => {
 
       let tokenId = 444;
       let amount = 10;
       let fee = await bridge.calcFee(amount);
 
-      // We did not provide the bridge with any native tokens so far. So it can not send them back
+      await bridge.setSupportedChain("Ala");
+
+      // Let bridge transfer tokens from client to bridge
+      await tokenERC1155.connect(clientAcc1).setApprovalForAll(bridge.address, true);
+
       let domainSeparator = getDomainSeparatorERC1155((await tokenERC1155.uri(tokenId)), '1', chainId, bridge.address);
       let typeHash = getPermitTypeHashERC1155(clientAcc1.address, amount, 0)
       let permitDigest = getPermitDigestERC1155(domainSeparator, typeHash);
       let signature = getSignatureFromDigestERC1155(permitDigest, botMessenger);
-
-      await expect(bridge.connect(clientAcc1).unlockWithPermitERC1155(
+      
+      await bridge.connect(clientAcc1).mintWithPermitERC1155(
         tokenERC1155.address,
         tokenId,
         amount,
@@ -666,7 +915,52 @@ describe('Bridge', () => {
         signature.v,
         signature.r,
         signature.s
-        )).to.be.revertedWith("ERC1155: insufficient balance for transfer");
+        );
+
+      // Lock tokens. 
+      // Call from the same address as in the signature!
+      await expect(await bridge.connect(clientAcc1).lockERC1155(tokenERC1155.address, tokenId, amount, clientAcc1.address, "Ala", {value: fee / 2}))
+      .to.be.revertedWith("Bridge: not enough native tokens were sent to cover the fees!");
+
+    });
+
+    it('Should fail to unlock ERC1155 tokens if bridge does not have enough tokens of a given type', async() => {
+
+      let tokenId = 444;
+      let amount = 10;
+      let fee = await bridge.calcFee(amount);
+
+      let domainSeparator = getDomainSeparatorERC1155((await tokenERC1155.uri(tokenId)), '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashERC1155(clientAcc1.address, amount, 0)
+      let permitDigest = getPermitDigestERC1155(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestERC1155(permitDigest, botMessenger);
+      
+      await bridge.connect(clientAcc1).mintWithPermitERC1155(
+        tokenERC1155.address,
+        tokenId,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+        );
+
+      domainSeparator = getDomainSeparatorERC1155((await tokenERC1155.uri(tokenId)), '1', chainId, bridge.address);
+      typeHash = getPermitTypeHashERC1155(clientAcc2.address, amount, 1)
+      permitDigest = getPermitDigestERC1155(domainSeparator, typeHash);
+      signature = getSignatureFromDigestERC1155(permitDigest, botMessenger);
+
+      console.log(await tokenERC1155.balanceOf(bridge.address, tokenId));
+
+      await expect(bridge.connect(clientAcc2).unlockWithPermitERC1155(
+        tokenERC1155.address,
+        tokenId,
+        amount,
+        1,
+        signature.v,
+        signature.r,
+        signature.s
+        )).to.be.revertedWith("Bridge: not enough ERC1155 tokens on the bridge balance!");
     });
 
     it('Should burn ERC1155 tokens', async() => {
@@ -710,6 +1004,34 @@ describe('Bridge', () => {
       .to.be.revertedWith("ERC1155: burn amount exceeds balance");
 
     });
+
+    it('Should fail to burn ERC1155 tokens if not enough native tokens were sent', async() => {
+
+      let tokenId = 444;
+      let amount = 10;
+      let fee = await bridge.calcFee(amount);
+
+      await bridge.setSupportedChain("ETH");
+
+      let domainSeparator = getDomainSeparatorERC1155((await tokenERC1155.uri(tokenId)), '1', chainId, bridge.address);
+      let typeHash = getPermitTypeHashERC1155(clientAcc1.address, amount, 0)
+      let permitDigest = getPermitDigestERC1155(domainSeparator, typeHash);
+      let signature = getSignatureFromDigestERC1155(permitDigest, botMessenger);
+
+      await bridge.connect(clientAcc1).mintWithPermitERC1155(
+        tokenERC1155.address,
+        tokenId,
+        amount,
+        0,
+        signature.v,
+        signature.r,
+        signature.s
+        );
+
+      await expect(bridge.connect(clientAcc1).burnERC1155(tokenERC1155.address, tokenId, amount, clientAcc1.address, "ETH", {value: fee / 2}))
+      .to.be.revertedWith("Bridge: not enough native tokens were sent to cover the fees!");
+
+    });
   });
 
 
@@ -719,10 +1041,22 @@ describe('Bridge', () => {
       // Client does not have admin rights here
       await expect(bridge.connect(clientAcc1).setSupportedChain("Ala"))
       .to.be.revertedWith("Bridge: the caller is not an admin!");
-      await bridge.setAdmin(clientAcc1.address);
+      await expect(bridge.setAdmin(clientAcc1.address))
+      .to.emit(bridge, "SetAdmin").withArgs(anyValue);
       // Now he does
       await bridge.connect(clientAcc1).setSupportedChain("Ala");
 	  });
+
+    it('Should fail to set new admin with invalid address', async() => {
+      await expect(bridge.setAdmin(addressZero))
+        .to.be.revertedWith("Bridge: new admin can not have a zero address!");
+    });
+
+    it('Should set new fee rate', async() => {
+      // Try to set fee rate more than 100% (10_000 BP)
+      await expect(bridge.setFeeRate(1000))
+        .to.emit(bridge, "SetFeeRate").withArgs(anyValue);
+    });
 
 		it('Should fail to set very high new fee rate', async() => {
       // Try to set fee rate more than 100% (10_000 BP)
@@ -806,13 +1140,15 @@ describe('Bridge', () => {
       let sum = amount.add(fee);
 
       // Forbid transactions on Ala chain
-      await bridge.removeSupportedChain("Ala");
+      await expect(bridge.removeSupportedChain("Ala"))
+      .to.emit(bridge, "RemoveChain").withArgs(anyValue);
 
       await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
       .to.be.revertedWith("Bridge: the chain is not supported!");
 
       // Allow transactions on Ala chain
-      await bridge.setSupportedChain("Ala");
+      await expect(bridge.setSupportedChain("Ala"))
+      .to.emit(bridge, "SetNewChain").withArgs(anyValue);
 
       await expect(bridge.lockNative(amount, clientAcc1.address, "Ala", {value: sum}))
       .to.emit(bridge, "LockNative")
@@ -820,4 +1156,19 @@ describe('Bridge', () => {
 
 	  });
 	});
+});
+
+
+describe("Bridge extras", async () => {
+
+  const addressZero = "0x0000000000000000000000000000000000000000";
+
+    [ownerAcc, clientAcc1, clientAcc2] = await ethers.getSigners();
+
+    let bridgeTx = await ethers.getContractFactory("Bridge");
+    await expect(bridgeTx.deploy(addressZero))
+    .to.be.revertedWith("Bridge: default bot messenger can not be zero address!");
+
+    await bridge.deployed();
+
 });

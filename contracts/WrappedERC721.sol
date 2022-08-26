@@ -33,7 +33,9 @@ contract WrappedERC721 is IWrappedERC721, ERC721URIStorage, Initializable {
         string memory symbol_,
         address bridge_
     ) external initializer {
-        require(bridge_ != address(0));
+        require(bytes(name_).length > 0, "ERC721: initial token name can not be empty!");
+        require(bytes(symbol_).length > 0, "ERC721: initial token symbol can not be empty!");
+        require(bridge_ != address(0), "ERC721: initial bridge address can not be a zero address!");
         _bridge = bridge_;
         _tokenName = name_;
         _tokenSymbol = symbol_;

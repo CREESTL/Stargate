@@ -70,3 +70,28 @@ describe('ERC20 Token', () => {
   	
   });  
 });
+
+
+describe("ERC20 Token extras", async () => {
+  const addressZero = "0x0000000000000000000000000000000000000000";
+  it('Should fail to initialize with wrong arguments', async() => {
+    [ownerAcc, clientAcc1, clientAcc2, bridgeAcc] = await ethers.getSigners();
+
+    let tokenTx = await ethers.getContractFactory("WrappedERC20");
+    token = await tokenTx.deploy();
+
+    await token.deployed();
+    
+    await expect(token.initialize("", "SFXDX", 18, bridgeAcc.address))
+    .to.be.revertedWith("ERC20: initial token name can not be empty!");
+
+    await expect(token.initialize("Integral", "", 18, bridgeAcc.address))
+    .to.be.revertedWith("ERC20: initial token symbol can not be empty!");
+    
+    await expect(token.initialize("Integral", "SFXDX", 0, bridgeAcc.address))
+    .to.be.revertedWith("ERC20: initial decimals can not be zero!");
+
+    await expect(token.initialize("Integral", "SFXDX", 18, addressZero))
+    .to.be.revertedWith("ERC20: initial bridge address can not be a zero address!");
+  }); 
+});

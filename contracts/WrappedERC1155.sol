@@ -29,7 +29,8 @@ contract WrappedERC1155 is IWrappedERC1155, ERC1155URIStorage, Initializable {
         string memory tokensUri_,
         address bridge_
     ) external initializer {
-        require(bridge_ != address(0));
+        require(bytes(tokensUri_).length > 0, "ERC1155: initial token URI can not be empty!");
+        require(bridge_ != address(0), "ERC1155: initial bridge address can not be a zero address!");
         _bridge = bridge_;
         _tokenUri = tokensUri_;
     }

@@ -35,7 +35,10 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
         uint8 decimals_,
         address bridge_
     ) external initializer {
-        require(bridge_ != address(0));
+        require(bytes(name_).length > 0, "ERC20: initial token name can not be empty!");
+        require(bytes(symbol_).length > 0, "ERC20: initial token symbol can not be empty!");
+        require(decimals_ > 0, "ERC20: initial decimals can not be zero!");
+        require(bridge_ != address(0), "ERC20: initial bridge address can not be a zero address!");
         _decimals = decimals_;
         _bridge = bridge_;
         _tokenName = name_;
