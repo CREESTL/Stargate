@@ -1070,7 +1070,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         uint256 nonce
     ) internal view returns (bytes32) {
         bytes32 domainSeparator = getDomainSeparatorERC1155(token, tokenId, "1", block.chainid, address(this));
-        bytes32 typeHash = getPermitTypeHashERC1155(amount, receiver, nonce);
+        bytes32 typeHash = getPermitTypeHashERC1155(tokenId, amount, receiver, nonce);
 
         bytes32 permitDigest = keccak256(
             abi.encodePacked(
@@ -1120,9 +1120,11 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @dev Generates the type hash for permit digest of ERC1155 token
     /// @param amount The amount of tokens of specific type
+    /// @param tokenId The ID of type of tokens
     /// @param receiver The receiver of transfered token
     /// @param nonce Unique number to prevent replay
     function getPermitTypeHashERC1155(
+        uint256 tokenId,
         uint256 amount,
         address receiver,
         uint256 nonce
@@ -1131,8 +1133,9 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         bytes32 permitHash = keccak256(
             abi.encode(
                 keccak256(
-                    "Permit(address receiver,uint256 amount,uint256 nonce)"
+                    "Permit(uint256 tokenId,address receiver,uint256 amount,uint256 nonce)"
                 ),
+                tokenId,
                 receiver,
                 amount,
                 nonce
@@ -1143,7 +1146,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     }
 
 
-    //==========Helper Function==========
+    //==========Helper Functions==========
 
 
     /// @notice Sets the admin

@@ -249,12 +249,13 @@ function getDomainSeparatorERC1155(tokenUri, version, chainId, verifyingAddress)
 	);
 }
 
-function getPermitTypeHashERC1155(receiver, amount, nonce) {
+function getPermitTypeHashERC1155(receiver, tokenId, amount, nonce) {
 	return keccak256(
 		defaultAbiCoder.encode(
-			['bytes32', 'address', 'uint256', 'uint256'],
+			['bytes32', 'uint256', 'address', 'uint256', 'uint256'],
 			[
-			keccak256(toUtf8Bytes("Permit(address receiver,uint256 amount,uint256 nonce)")),
+			keccak256(toUtf8Bytes("Permit(uint256 tokenId,address receiver,uint256 amount,uint256 nonce)")),
+			tokenId,
 			receiver,
 			amount,
 			nonce,
