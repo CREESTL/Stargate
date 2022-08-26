@@ -6,9 +6,9 @@ const { ecsign } = require("ethereumjs-util");
  * Order of calls (from higher level to lower)
  * 
  * 1) 			getSignatureFromDigest
- * 						|
+ *                      |
  * 2) 			getPermitDigest
- * 					/       \
+ *                  /       \
  * 3) getDomainSeparator + getPermitTypeHashNative
  */
 
