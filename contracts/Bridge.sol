@@ -26,7 +26,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     mapping(string => bool) public supportedChains;
     /// @dev Monitor fees for ERC20 tokens
     /// @dev Map from token address to fees
-    mapping(address => uint256) public TokenFees;
+    mapping(address => uint256) public tokenFees;
     /// @dev Monitor nonces. Prevent replay attacks
     mapping(uint256 => bool) public nonces;
 
@@ -41,9 +41,9 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @dev e.g. The msg.value is 50 tokens. The fee rate is 30 BP (0.3%)
     /// @dev 50 * 30 = 1500 BP
     /// @dev 1500 BP / 10 000 = 0.3%. Human readable.
-    uint256 private constant percentDenominator = 10_000;
+    uint256 private constant PERCENT_DENOMINATOR = 10_000;
     /// @dev Fee can't be more than 100%
-    uint256 private constant maxFeeRateBp = 100 * 100;
+    uint256 private constant MAX_FEE_RATE_BP = 100 * 100;
 
     /// @dev Checks if caller is an admin
     modifier onlyAdmin {
@@ -120,7 +120,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Calculate the fee and save it
         uint256 feeAmount = calcFee(amount);
         // In case of native tokens the address is zero address
-        TokenFees[address(0)] += feeAmount;
+        tokenFees[address(0)] += feeAmount;
         
         // Make sure that user sent enough tokens to cover both amount and fee
         require(msg.value >= amount + feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
@@ -314,7 +314,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Calculate the fee and save it
         uint256 feeAmount = calcFee(amount);
-        TokenFees[token] += feeAmount;
+        tokenFees[token] += feeAmount;
 
         // Make sure that user sent enough tokens to cover both amount and fee
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
@@ -362,7 +362,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
         // Calculate the fee and save it
         uint256 feeAmount = calcFee(amount);
-        TokenFees[token] += feeAmount;
+        tokenFees[token] += feeAmount;
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
@@ -601,7 +601,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Calculate the fee and save it
         // TODO what amount to set here?
         uint256 feeAmount = calcFee(1);
-        TokenFees[token] += feeAmount;
+        tokenFees[token] += feeAmount;
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
@@ -643,7 +643,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Calculate the fee and save it
         // TODO what amount to set here?
         uint256 feeAmount = calcFee(1);
-        TokenFees[token] += feeAmount;
+        tokenFees[token] += feeAmount;
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
@@ -882,7 +882,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Calculate the fee and save it
         // TODO what amount to set here?
         uint256 feeAmount = calcFee(amount);
-        TokenFees[token] += feeAmount;
+        tokenFees[token] += feeAmount;
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
@@ -926,7 +926,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Calculate the fee and save it
         // TODO what amount to set here?
         uint256 feeAmount = calcFee(1);
-        TokenFees[token] += feeAmount;
+        tokenFees[token] += feeAmount;
 
         require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
@@ -1160,7 +1160,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @notice Sets a new fee rate for bridge operations
     /// @param newFeeRateBp A new rate in basis points
     function setFeeRate(uint256 newFeeRateBp) external onlyAdmin {
-        require(newFeeRateBp > 0 && newFeeRateBp <= maxFeeRateBp, "Bridge: fee rate is too high!");
+        require(newFeeRateBp > 0 && newFeeRateBp <= MAX_FEE_RATE_BP, "Bridge: fee rate is too high!");
         feeRateBp = newFeeRateBp;
         emit SetFeeRate(newFeeRateBp);
     }
@@ -1170,7 +1170,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param amount An amount of tokens that were sent
     /// @return The fee amount in atomic tokens of the chain (e.g. wei in Ethereum)
     function calcFee(uint256 amount) public view returns(uint256) {
-        uint256 result = amount * feeRateBp / percentDenominator;
+        uint256 result = amount * feeRateBp / PERCENT_DENOMINATOR;
         // TODO this line works well for natives or erc20, but not for erc721 or erc1155
         //require(result >= 1, "Bridge: transaction amount too low for fees!");
         return result;
@@ -1181,10 +1181,10 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param token The address of the token which transfers collected fees (zero address for native token)
     /// @param amount The amount of fees from a single token to be withdrawn
     function withdraw(address token, uint256 amount) external nonReentrant onlyAdmin {
-        require(TokenFees[token] != 0, "Bridge: no fees were collected for this token!");
-        require(TokenFees[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
+        require(tokenFees[token] != 0, "Bridge: no fees were collected for this token!");
+        require(tokenFees[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
         
-        TokenFees[token] -= amount;
+        tokenFees[token] -= amount;
         
         (bool success, ) = msg.sender.call{ value: amount }("");
         require(success, "Bridge: tokens withdrawal failed!");

@@ -13,9 +13,9 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 contract WrappedTokenFactory is IWrappedERC20Factory {
 
     /// @dev Addresses of token templates to clone
-    address immutable ERC20Template;
-    address immutable ERC721Template;
-    address immutable ERC1155Template;
+    address private immutable ERC20Template;
+    address private immutable ERC721Template;
+    address private immutable ERC1155Template;
 
     /// @dev Map of addresses of tokens in the original and target chains
     mapping(address => address) internal originalToWrappedTokens;
