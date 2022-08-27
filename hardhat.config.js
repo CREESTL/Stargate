@@ -10,9 +10,7 @@ const {
         BSCSCAN_API_KEY,
         POLYGONSCAN_API_KEY,
         ETHERSCAN_API_KEY,
-        BSC_PRIVATE_KEY,
-        ETH_PRIVATE_KEY,
-        POLYGON_PRIVATE_KEY,
+        ACC_PRIVATE_KEY,
         INFURA_API_KEY
     } = process.env;
 
@@ -36,32 +34,32 @@ module.exports = {
     // BSC Chapel testnet
     chapel: {
       url: `https://rpc.ankr.com/bsc_testnet_chapel/`,
-      accounts: [BSC_PRIVATE_KEY]
+      accounts: [ACC_PRIVATE_KEY]
     },
     // BSC mainnet
     bsc: {
       url: "https://rpc.ankr.com/bsc",
-      accounts: [BSC_PRIVATE_KEY]
+      accounts: [ACC_PRIVATE_KEY]
     },
     // Polygon Mumbai testnet
     mumbai: {
       url: "https://rpc-mumbai.maticvigil.com",
-      accounts: [POLYGON_PRIVATE_KEY]
+      accounts: [ACC_PRIVATE_KEY]
     },
     // Polygon mainnet
     polygon: {
       url: "https://rpc-mainnet.maticvigil.com",
-      accounts: [POLYGON_PRIVATE_KEY]
+      accounts: [ACC_PRIVATE_KEY]
     },
     // Ethereum Rinkeby testnet
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${INFURA_API_KEY}`,
-      accounts: [ETH_PRIVATE_KEY]
+      accounts: [ACC_PRIVATE_KEY]
     },
     // Ethereum mainnet
     ethereum: {
       url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
-      accounts: [ETH_PRIVATE_KEY]
+      accounts: [ACC_PRIVATE_KEY]
     }
   },
   mocha: {

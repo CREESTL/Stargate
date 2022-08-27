@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const delay = require("delay");
 
+const { ACC_ADDRESS } = process.env;
 
 // JSON file to keep information about previous deployments
 const OUTPUT_DEPLOY = require("./deployOutput.json");
@@ -18,8 +19,6 @@ async function main() {
 
   console.log(`[NOTICE!] Chain of deployment: ${network.name}`);
 
-  // NOTE WrappedERC20 is not supposed to be deployed. It is deployed by the Factory.
-
   // ====================================================
 
   // Contract #1: Bridge
@@ -28,8 +27,7 @@ async function main() {
   contractName = "Bridge";
   console.log(`[${contractName}]: Start of Deployment...`);
   _contractProto = await ethers.getContractFactory(contractName);
-  // Owner gets admin rights. Fee rate is 2% (200 BPS)
-  contractDeployTx = await _contractProto.deploy(owner.address, 200);
+  contractDeployTx = await _contractProto.deploy(ACC_ADDRESS);
   bridge = await contractDeployTx.deployed();
   console.log(`[${contractName}]: Deployment Finished!`);
   OUTPUT_DEPLOY[network.name][contractName].address = bridge.address;
@@ -54,16 +52,20 @@ async function main() {
     url = "https://rinkeby.etherscan.io/address/" + bridge.address + "#code";
   } else if (network.name === "bsc") {
     url = "https://bscscan.com/address/" + bridge.address + "#code";
-  } 
+  } else if (network.name === "chapel") {
+    url = "https://testnet.bscscan.com/address/" + bridge.address + "#code";
+  }
   OUTPUT_DEPLOY[network.name][contractName].verification = url;
   
-  // Verify the contract
   // Provide all contract's dependencies as separate files
   // NOTE It may fail with "Already Verified" error. Do not pay attention to it. Verification will
   // be done correctly!
   try { 
     await hre.run("verify:verify", {
       address: bridge.address,
+      constructorArguments: [
+        ACC_ADDRESS
+      ]
     });
   } catch (error) {
     console.error(error);
@@ -75,11 +77,10 @@ async function main() {
   // Contract #2: WrappedERCFactory
 
   // Deploy
-  contractName = "WrappedERC20Factory";
+  contractName = "WrappedTokenFactory";
   console.log(`[${contractName}]: Start of Deployment...`);
   _contractProto = await ethers.getContractFactory(contractName);
-  // Provide the factory with bridge address.
-  contractDeployTx = await _contractProto.deploy(bridge.address);
+  contractDeployTx = await _contractProto.deploy();
   factory = await contractDeployTx.deployed();
   console.log(`[${contractName}]: Deployment Finished!`);
   OUTPUT_DEPLOY[network.name][contractName].address = factory.address;
@@ -104,10 +105,12 @@ async function main() {
     url = "https://rinkeby.etherscan.io/address/" + factory.address + "#code";
   } else if (network.name === "bsc") {
     url = "https://bscscan.com/address/" + factory.address + "#code";
-  } 
+  } else if (network.name === "chapel") {
+    url = "https://testnet.bscscan.com/address/" + bridge.address + "#code";
+  }
+
   OUTPUT_DEPLOY[network.name][contractName].verification = url;
   
-  // Verify the contract
   // Provide all contract's dependencies as separate files
   // NOTE It may fail with "Already Verified" error. Do not pay attention to it. Verification will
   // be done correctly!
