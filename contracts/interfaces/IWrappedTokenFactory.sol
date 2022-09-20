@@ -50,25 +50,25 @@ interface IWrappedERC20Factory {
 
     /// @dev Event gets emmited each time a new ERC20 token is created
     event CreateERC20Token(
-        string indexed originalChain,
+        string originalChain,
         address originalToken,
-        string  indexed name, 
+        string name, 
         address indexed token
     );
 
     /// @dev Event gets emmited each time a new ERC721 token is created
     event CreateERC721Token(
-        string indexed originalChain,
+        string originalChain,
         address originalToken,
-        string  indexed name, 
+        string name, 
         address indexed token
     );
 
     /// @dev Event gets emmited each time a new ERC1155 token is created
     event CreateERC1155Token(
-        string indexed originalChain,
+        string originalChain,
         address originalToken,
-        string  indexed tokenUri, 
+        string tokenUri, 
         address indexed token
     );
 }

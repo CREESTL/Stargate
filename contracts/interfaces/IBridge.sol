@@ -242,7 +242,7 @@ interface IBridge {
     /// @param targetChain The name of the target chain
     event LockNative(
         address indexed sender,
-        string indexed receiver,
+        string receiver,
         uint256 amount,
         string targetChain
     );
@@ -256,7 +256,7 @@ interface IBridge {
     event LockERC20(
         address indexed token,
         address indexed sender,
-        string indexed receiver,
+        string receiver,
         uint256 amount,
         string targetChain
     );
@@ -301,7 +301,7 @@ interface IBridge {
     event BurnERC20(
         address indexed token,
         address indexed sender,
-        string indexed receiver,
+        string receiver,
         uint256 amount,
         string targetChain
     );
@@ -432,12 +432,12 @@ interface IBridge {
     /// @notice Indicates that a new supported chain was set
     /// @param newChain The name of a new supported chain
     event SetNewChain(
-        string indexed newChain
+        string newChain
     );
 
     /// @notice Indicates that a chain is no longer supported
     /// @param oldChain The name of a previously supported chain
     event RemoveChain(
-        string indexed oldChain
+        string oldChain
     );
 }
