@@ -33,19 +33,23 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     bytes32 public constant BOT_MESSENGER_ROLE = keccak256("BOT_MESSENGER_ROLE");
     address public botMessenger;
+    address public stablecoin;
+    address public stargateToken;
+    /// @dev Last verified nonce
     uint256 public lastNonce;
 
-    /// @dev Fee rate. Used to calculate final fee. In basis points.
-    /// @dev 1 basis point = 1% / 100
-    /// @dev Default fee rate is 0.3% (30 BP)
-    uint256 private feeRateBp = 30; 
-    /// @dev Denominator used to convert fee into percents
-    /// @dev e.g. The msg.value is 50 tokens. The fee rate is 30 BP (0.3%)
-    /// @dev 50 * 30 = 1500 BP
-    /// @dev 1500 BP / 10 000 = 0.3%. Human readable.
-    uint256 private constant PERCENT_DENOMINATOR = 10_000;
-    /// @dev Fee can't be more than 100%
-    uint256 private constant MAX_FEE_RATE_BP = 100 * 100;
+    //========== Fees ==========
+
+    uint256 private constant PERCENT_DENOMINATOR = 100_000;
+
+    uint256 private constant MIN_ERC20_ST_FEE_USD = 750;//$0.0075
+    uint256 private constant MAX_ERC20_ST_FEE_USD = 15000;//$0.15
+    uint256 private constant MIN_ERC20_TT_FEE_USD = 1000;//$0.01
+    uint256 private constant MAX_ERC20_TT_FEE_USD = 20000;//$0.2
+    uint256 private constant ERC20_ST_FEE_RATE = 225;//0.225%
+    uint256 private constant ERC20_TT_FEE_RATE = 300;//0.3%
+    uint256 private constant ERC721_1155_ST_FEE_USD = 20000;//$0.2 
+    uint256 private constant ERC721_1155_FEE_USD = 30000;//$0.3
 
     /// @dev Checks if caller is an admin
     modifier onlyAdmin {
@@ -61,14 +65,22 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @notice Initializes internal variables, sets roles
     /// @param _botMessenger The address of bot messenger
+    /// @param _stablecoin The address of USD stablecoin
+    /// @param _stargateToken The address of stargate token 
     constructor(
-        address _botMessenger
+        address _botMessenger,
+        address _stablecoin,
+        address _stargateToken
     ) { 
         require(_botMessenger != address(0), "Bridge: default bot messenger can not be zero address!");
+        require(_stablecoin != address(0), "Bridge: stablecoin can not be zero address!");
+        require(_stargateToken != address(0), "Bridge: stargate token can not be zero address!");
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // The provided address gets a special role (used in signature verification)
         botMessenger = _botMessenger;
+        stablecoin = _stablecoin;
+        stargateToken = _stargateToken;
         _setupRole(BOT_MESSENGER_ROLE, botMessenger);
 
     }
@@ -100,17 +112,24 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @notice Locks native tokens on the source chain
     /// @param amount The amount of tokens to lock
-    /// @param receiver The wrapped of wrapped tokens
+    /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were locked successfully
-    function lockNative(
+    function lockWithPermitNative(
         uint256 amount,
         string memory receiver,
-        string memory targetChain
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        uint256 transferedTokensAmountForOneUsd,
+        bool payFeesWithST
     ) 
     external
-    // If a user wants to lock tokens - he should provide `amount+fee` native tokens
-    // The fee can be calculated using `calcFee` method (only by the admin)
+    // If a user wants to lock tokens and pay fees in native tokens
+    // he should provide `amount+fee` native tokens
+    // The fee can be calculated using `calcFeeScaled` method
     payable
     isSupportedChain(targetChain)
     nonReentrant
@@ -118,14 +137,19 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     {        
 
         address sender = msg.sender;
-
         // Calculate the fee and save it
-        uint256 feeAmount = calcFee(amount);
-        // In case of native tokens the address is zero address
-        tokenFees[address(0)] += feeAmount;
+        uint256 feeAmount = calcFeeScaled(
+            amount,
+            stargateAmountForOneUsd,
+            transferedTokensAmountForOneUsd,
+            payFeesWithST
+        );
         
+        if(payFeesWithST)
+            payFees(sender, stargateToken, feeAmount);
+        else
         // Make sure that user sent enough tokens to cover both amount and fee
-        require(msg.value >= amount + feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+            require(msg.value >= amount + feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
 
         emit LockNative(sender, receiver, amount, targetChain);
 
@@ -218,17 +242,20 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param amount The amount of tokens to lock
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were locked successfully
-    function lockERC20(
+    function lockWithPermitERC20(
         address token,
         uint256 amount,
         string memory receiver,
-        string memory targetChain
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        uint256 transferedTokensAmountForOneUsd,
+        bool payFeesWithST
     )
     external
-    // If a user wants to lock tokens - he should provide `feeAmount` native tokens
-    // The fee can be calculated using `calcFee` method (only by the admin)
-    payable
     isSupportedChain(targetChain)
     nonReentrant
     returns(bool)
@@ -236,11 +263,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         address sender = msg.sender;
 
         // Calculate the fee and save it
-        uint256 feeAmount = calcFee(amount);
-        tokenFees[token] += feeAmount;
-
-        // Make sure that user sent enough tokens to cover both amount and fee
-        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+        uint256 feeAmount = calcFeeScaled(
+            amount,
+            stargateAmountForOneUsd,
+            transferedTokensAmountForOneUsd,
+            payFeesWithST
+        );
 
         // NOTE ERC20.increaseAllowance(address(this), amount) must be called on the backend 
         // before transfering the tokens
@@ -253,6 +281,10 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Transfer additional fee with the initial amount of tokens
         IWrappedERC20(token).safeTransferFrom(sender, address(this), amount);
 
+        if(payFeesWithST)
+            payFees(sender, stargateToken, feeAmount);
+        else
+            payFees(sender, token, feeAmount);
         // Emit the lock event with detailed information
         emit LockERC20(token, sender, receiver, amount, targetChain);
 
@@ -265,17 +297,20 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param amount The amount of tokens to burn
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were burnt successfully
-    function burnERC20(
+    function burnWithPermitERC20(
         address token,
         uint256 amount,
         string memory receiver,
-        string memory targetChain
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        uint256 transferedTokensAmountForOneUsd,
+        bool payFeesWithST
     )
     external
-    // If a user wants to burn tokens - he should provide `feeAmount` native tokens
-    // The fee can be calculated using `calcFee` method (only by the admin)
-    payable
     isSupportedChain(targetChain)
     nonReentrant
     returns(bool)
@@ -284,11 +319,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         address sender = msg.sender;
 
         // Calculate the fee and save it
-        uint256 feeAmount = calcFee(amount);
-        tokenFees[token] += feeAmount;
-
-        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
-
+        uint256 feeAmount = calcFeeScaled(
+            amount,
+            stargateAmountForOneUsd,
+            transferedTokensAmountForOneUsd,
+            payFeesWithST
+        );
 
         // Transfer user's tokens (and a fee) to the bridge contract from target chain account
         // NOTE This method should be called from the address on the target chain
@@ -297,8 +333,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         // Burn all tokens except the fee
         IWrappedERC20(token).burn(sender, amount);
 
-        emit BurnERC20(token, sender, receiver, amount, targetChain);
+        if(payFeesWithST)
+            payFees(sender, stargateToken, feeAmount);
+        else
+            payFees(sender, token, feeAmount);
 
+        emit BurnERC20(token, sender, receiver, amount, targetChain);
         return true;
     }
 
@@ -423,32 +463,38 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param tokenId The ID of the token to lock
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were locked successfully
-    function lockERC721(
+    function lockWithPermitERC721(
         address token,
         uint256 tokenId,
         string memory receiver,
-        string memory targetChain
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
     ) 
     external 
-    // If a user wants to lock tokens - he should provide `feeAmount` native tokens
-    // The fee can be calculated using `calcFee` method (only by the admin)
-    payable 
     returns(bool) 
     {
         address sender = msg.sender;
 
         // Calculate the fee and save it
-        // TODO what amount to set here?
-        uint256 feeAmount = calcFee(1);
-        tokenFees[token] += feeAmount;
-
-        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+        uint256 feeAmount = calcFeeFixed(
+            1,
+            stargateAmountForOneUsd,
+            payFeesWithST
+        );
 
         // NOTE ERC721.setApprovalForAll(address(this), true) must be called on the backend 
         // before transfering the tokens
 
         IWrappedERC721(token).safeTransferFrom(sender, address(this), tokenId);
+
+        if(payFeesWithST)
+            payFees(sender, stargateToken, feeAmount);
+        else
+            payFees(sender, token, feeAmount);
 
         // Emit the lock event with detailed information
         emit LockERC721(token, tokenId, sender, receiver, targetChain);
@@ -462,17 +508,18 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param tokenId The ID of the token to lock
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were burnt successfully
-    function burnERC721(
+    function burnWithPermitERC721(
         address token,
         uint256 tokenId,
         string memory receiver,
-        string memory targetChain
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
     )
     external
-    // If a user wants to burn tokens - he should provide `feeAmount` native tokens
-    // The fee can be calculated using `calcFee` method (only by the admin)
-    payable
     isSupportedChain(targetChain)
     nonReentrant
     returns(bool)
@@ -481,13 +528,18 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         address sender = msg.sender;
 
         // Calculate the fee and save it
-        // TODO what amount to set here?
-        uint256 feeAmount = calcFee(1);
-        tokenFees[token] += feeAmount;
-
-        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+        uint256 feeAmount = calcFeeFixed(
+            1,
+            stargateAmountForOneUsd,
+            payFeesWithST
+        );
 
         IWrappedERC721(token).burn(tokenId);
+
+        if(payFeesWithST)
+            payFees(sender, stargateToken, feeAmount);
+        else
+            payFees(sender, stablecoin, feeAmount);
 
         emit BurnERC721(token, tokenId, sender, receiver, targetChain);
 
@@ -616,33 +668,39 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param amount The amount of tokens of specifi type
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were locked successfully
-    function lockERC1155(
+    function lockWithPermitERC1155(
         address token,
         uint256 tokenId,
         uint amount,
         string memory receiver,
-        string memory targetChain
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
     ) 
     external 
-    // If a user wants to lock tokens - he should provide `feeAmount` native tokens
-    // The fee can be calculated using `calcFee` method (only by the admin)
-    payable
     returns(bool) 
     {
         address sender = msg.sender;
 
         // Calculate the fee and save it
-        // TODO what amount to set here?
-        uint256 feeAmount = calcFee(amount);
-        tokenFees[token] += feeAmount;
-
-        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+        uint256 feeAmount = calcFeeFixed(
+            amount,
+            stargateAmountForOneUsd,
+            payFeesWithST
+        );
 
         // NOTE ERC1155.setApprovalForAll(address(this), true) must be called on the backend 
         // before transfering the tokens
 
         IWrappedERC1155(token).safeTransferFrom(sender, address(this), tokenId, amount, bytes("iamtoken"));
+
+        if(payFeesWithST)
+            payFees(sender, stargateToken, feeAmount);
+        else
+            payFees(sender, stablecoin, feeAmount);
 
         // Emit the lock event with detailed information
         emit LockERC1155(token, tokenId, sender, receiver, amount, targetChain);
@@ -657,18 +715,19 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
     /// @param amount The amount of tokens of specific type
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were burnt successfully
-    function burnERC1155(
+    function burnWithPermitERC1155(
         address token,
         uint256 tokenId,
         uint256 amount,
         string memory receiver,
-        string memory targetChain
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
     )
     external
-    // If a user wants to burn tokens - he should provide `feeAmount` native tokens
-    // The fee can be calculated using `calcFee` method (only by the admin)
-    payable 
     isSupportedChain(targetChain)
     nonReentrant
     returns(bool)
@@ -677,14 +736,19 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         address sender = msg.sender;
 
         // Calculate the fee and save it
-        // TODO what amount to set here?
-        uint256 feeAmount = calcFee(1);
-        tokenFees[token] += feeAmount;
-
-        require(msg.value >= feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
+        uint256 feeAmount = calcFeeFixed(
+            amount,
+            stargateAmountForOneUsd,
+            payFeesWithST
+        );
 
         // Burn all tokens from user's wallet
         IWrappedERC1155(token).burn(sender, tokenId, amount);
+
+        if(payFeesWithST)
+            payFees(sender, stargateToken, feeAmount);
+        else
+            payFees(sender, stablecoin, feeAmount);
 
         emit BurnERC1155(token, tokenId, sender, receiver, amount, targetChain);
 
@@ -820,28 +884,74 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         emit SetAdmin(newAdmin);
     }
 
-    /// @notice Sets a new fee rate for bridge operations
-    /// @param newFeeRateBp A new rate in basis points
-    function setFeeRate(uint256 newFeeRateBp) external onlyAdmin {
-        require(newFeeRateBp > 0 && newFeeRateBp <= MAX_FEE_RATE_BP, "Bridge: fee rate is too high!");
-        feeRateBp = newFeeRateBp;
-        emit SetFeeRate(newFeeRateBp);
-    }
+    /// @notice Calculates a fee for bridge operations with ERC20 and native tokens
+    /// @param amount An amount of TT tokens that were sent
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
+    /// @return The fee amount in ST or TT depending on user's preferences
+    function calcFeeScaled(
+        uint256 amount,
+        uint256 stargateAmountForOneUsd,
+        uint256 transferedTokensAmountForOneUsd,
+        bool payFeesWithST
+    ) public pure returns(uint256) {
+        uint256 result;
 
-    /// @notice Calculates a fee for bridge operations
-    /// @notice Fee can not be less than 1
-    /// @param amount An amount of tokens that were sent
-    /// @return The fee amount in atomic tokens of the chain (e.g. wei in Ethereum)
-    function calcFee(uint256 amount) public view returns(uint256) {
-        uint256 result = amount * feeRateBp / PERCENT_DENOMINATOR;
-        // TODO this line works well for natives or erc20, but not for erc721 or erc1155
-        //require(result >= 1, "Bridge: transaction amount too low for fees!");
+        if(payFeesWithST) {
+            //TT * fee rate => USD
+            result = amount * ERC20_ST_FEE_RATE / transferedTokensAmountForOneUsd;
+            result = result > MIN_ERC20_ST_FEE_USD ? result : MIN_ERC20_ST_FEE_USD;
+            result = result < MAX_ERC20_ST_FEE_USD ? result : MAX_ERC20_ST_FEE_USD;
+            //USD => ST
+            result = result * stargateAmountForOneUsd / PERCENT_DENOMINATOR;
+        }
+        else if(transferedTokensAmountForOneUsd == 0) {
+            result = amount * ERC20_TT_FEE_RATE / PERCENT_DENOMINATOR;
+        } else {
+            //TT * fee rate => USD
+            result = amount * ERC20_TT_FEE_RATE / transferedTokensAmountForOneUsd;
+            result = result > MIN_ERC20_TT_FEE_USD ? result : MIN_ERC20_TT_FEE_USD;
+            result = result < MAX_ERC20_TT_FEE_USD ? result : MAX_ERC20_TT_FEE_USD;
+            //USD => TT
+            result = result * transferedTokensAmountForOneUsd / PERCENT_DENOMINATOR;
+        }
         return result;
     }
 
+    /// @notice Calculates a fee for bridge operations with ERC721 and ERC1155 tokens
+    /// @param amount An amount of tokens that were sent (always 1 if ERC721)
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
+    /// @return The fee amount in ST or USD depending on user's preferences
+    function calcFeeFixed(
+        uint256 amount,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
+    ) public view returns(uint256) {
+        uint256 result;
+        if(payFeesWithST) {
+            result = amount * (stargateAmountForOneUsd * ERC721_1155_ST_FEE_USD);
+            result = result / PERCENT_DENOMINATOR;
+        }
+        else {
+            result = amount * IWrappedERC20(stablecoin).decimals() * ERC721_1155_FEE_USD;
+            result = result / PERCENT_DENOMINATOR;
+        }
+        return result;
+    }
+
+    /// @notice Transfer fees from user's wallet to contract address
+    /// @param sender user's address
+    /// @param token address pf token in which fees are paid
+    /// @param feeAmount fee amount
+    function payFees(address sender, address token, uint256 feeAmount) internal {
+        tokenFees[token] += feeAmount;
+        IWrappedERC20(token).safeTransferFrom(sender, address(this), feeAmount);
+    }
 
     /// @notice Withdraws fees accumulated from a specific token operations
-    /// @param token The address of the token which transfers collected fees (zero address for native token)
+    /// @param token The address of the token which transfers collected fees
     /// @param amount The amount of fees from a single token to be withdrawn
     function withdraw(address token, uint256 amount) external nonReentrant onlyAdmin {
         require(tokenFees[token] != 0, "Bridge: no fees were collected for this token!");
@@ -849,8 +959,8 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         
         tokenFees[token] -= amount;
         
-        (bool success, ) = msg.sender.call{ value: amount }("");
-        require(success, "Bridge: tokens withdrawal failed!");
+        IWrappedERC20(token).safeTransfer(msg.sender, amount);
+        //require(success, "Bridge: tokens withdrawal failed!");
 
         emit Withdraw(msg.sender, amount);
 

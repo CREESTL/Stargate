@@ -20,11 +20,17 @@ interface IBridge {
     /// @param amount The amount of tokens to lock
     /// @param receiver The wrapped of wrapped tokens
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were locked successfully
-    function lockNative(
+    function lockWithPermitNative(
         uint256 amount,
         string memory receiver,
-        string memory targetChain
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        uint256 transferedTokensAmountForOneUsd,
+        bool payFeesWithST
     ) external payable returns(bool);
 
     /// @notice Locks ERC20 tokens on the source chain
@@ -32,26 +38,36 @@ interface IBridge {
     /// @param amount The amount of tokens to lock
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were locked successfully
-    function lockERC20(
+    function lockWithPermitERC20(
         address token,
         uint256 amount,
         string memory receiver,
-        string memory targetChain
-    ) external payable returns(bool);
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        uint256 transferedTokensAmountForOneUsd,
+        bool payFeesWithST
+    ) external returns(bool);
 
     /// @notice Locks ERC721 token on the source chain
     /// @param token The address of the token to lock
     /// @param tokenId The ID of the token to lock
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were locked successfully
-    function lockERC721(
+    function lockWithPermitERC721(
         address token,
         uint256 tokenId,
         string memory receiver,
-        string memory targetChain
-    ) external payable returns(bool);
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
+    ) external returns(bool);
 
     /// @notice Locks ERC1155 token on the source chain
     /// @param token The address of the token to lock
@@ -59,27 +75,37 @@ interface IBridge {
     /// @param amount The amount of tokens of specifi type
     /// @param receiver The receiver of wrapped tokens
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were locked successfully
-    function lockERC1155(
+    function lockWithPermitERC1155(
         address token,
         uint256 tokenId,
         uint amount,
         string memory receiver,
-        string memory targetChain
-    ) external payable returns(bool);
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
+    ) external returns(bool);
 
     /// @notice Burns ERC20 tokens on a target chain
     /// @param token The address of the token to burn
     /// @param amount The amount of tokens to burn
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were burnt successfully
-    function burnERC20(
+    function burnWithPermitERC20(
         address token,
         uint256 amount,
         string memory receiver,
-        string memory targetChain
-    ) external payable returns(bool);
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        uint256 transferedTokensAmountForOneUsd,
+        bool payFeesWithST
+    ) external returns(bool);
 
 
     /// @notice Burns ERC721 tokens on a target chain
@@ -87,13 +113,17 @@ interface IBridge {
     /// @param tokenId The ID of the token to lock
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were burnt successfully
-    function burnERC721(
+    function burnWithPermitERC721(
         address token,
         uint256 tokenId,
         string memory receiver,
-        string memory targetChain
-    ) external payable returns(bool);
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
+    ) external returns(bool);
 
     /// @notice Burns ERC1155 tokens on a target chain
     /// @param token The address of the token to burn
@@ -101,14 +131,18 @@ interface IBridge {
     /// @param amount The amount of tokens of specific type
     /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
     /// @param targetChain The name of the target chain
+    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
+    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
     /// @return True if tokens were burnt successfully
-    function burnERC1155(
+    function burnWithPermitERC1155(
         address token,
         uint256 tokenId,
         uint256 amount,
         string memory receiver,
-        string memory targetChain
-    ) external payable returns(bool);
+        string memory targetChain,
+        uint256 stargateAmountForOneUsd,
+        bool payFeesWithST
+    ) external returns(bool);
 
 
     /// @notice Mints ERC20 tokens if the user is permitted to do so
