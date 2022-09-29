@@ -9,17 +9,21 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
-import "./interfaces/IBridge.sol";
 import "./interfaces/IWrappedERC20.sol";
 import "./interfaces/IWrappedERC721.sol";
 import "./interfaces/IWrappedERC1155.sol";
 
-import "./libraries/EIP712Utils.sol";
+import "./base/EIP712Utils.sol";
 
 import "hardhat/console.sol";
 
-/// @title A ERC20-ERC20 bridge contract
-contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
+/// @title A bridge contract
+contract Bridge is
+    EIP712Utils,
+    IERC721Receiver,
+    AccessControl,
+    ReentrancyGuard
+{
 
     using SafeERC20 for IWrappedERC20;
 
@@ -107,774 +111,229 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         return IERC1155Receiver.onERC1155Received.selector;
     }
 
-
-    //==========Native Tokens Functions==========
-
-    /// @notice Locks native tokens on the source chain
-    /// @param amount The amount of tokens to lock
-    /// @param receiver The receiver of wrapped tokens
-    /// @param targetChain The name of the target chain
-    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
-    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
-    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
+    /// @notice Locks tokens if the user is permitted to lock
+    /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
+    /// @param params BridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were locked successfully
-    function lockWithPermitNative(
-        uint256 amount,
-        string memory receiver,
-        string memory targetChain,
-        uint256 stargateAmountForOneUsd,
-        uint256 transferedTokensAmountForOneUsd,
-        bool payFeesWithST
-    ) 
-    external
-    // If a user wants to lock tokens and pay fees in native tokens
-    // he should provide `amount+fee` native tokens
-    // The fee can be calculated using `calcFeeScaled` method
-    payable
-    isSupportedChain(targetChain)
-    nonReentrant
-    returns(bool) 
+    function lockWithPermit(Assets assetType, BridgeParams calldata params)
+        external
+        payable
+        isSupportedChain(params.targetChain)
+        nonReentrant
+        returns(bool) 
+    {   
+        if(assetType != Assets.Native)
+            require(msg.value == 0, "Bridge: wrong asset, only native lock payable");
+
+        address sender = msg.sender;
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has burnt tokens on the target chain
+        signatureVerification(params, true);
+        // Calculate the fee and save it
+        uint256 feeAmount;
+        if(assetType == Assets.Native || assetType == Assets.ERC20){
+            feeAmount = calcFeeScaled(
+                params.amount,
+                params.stargateAmountForOneUsd,
+                params.transferedTokensAmountForOneUsd,
+                params.payFeesWithST
+            );
+        } else {
+            feeAmount = calcFeeFixed(
+                params.amount,
+                params.stargateAmountForOneUsd,
+                params.payFeesWithST
+            );
+        }
+        if(params.payFeesWithST) 
+            payFees(sender, stargateToken, feeAmount);
+        if(!params.payFeesWithST && assetType == Assets.ERC20) 
+            payFees(sender, params.token, feeAmount);
+        if(!params.payFeesWithST && assetType == Assets.Native){
+            require(
+                msg.value >= params.amount + feeAmount,
+                "Bridge: not enough native tokens were sent to cover the fees!"
+            );
+            tokenFees[params.token] += feeAmount;
+        }
+        //Pay with stablecoins if you bridge ERC721 or ERC1155 and do not want to use ST
+        if(!params.payFeesWithST && (assetType == Assets.ERC721 || assetType == Assets.ERC1155)) 
+            payFees(sender, stablecoin, feeAmount);
+
+        processAsset(
+            assetType,
+            sender,
+            params.token,
+            params.tokenId,
+            params.amount
+        );
+
+        emit Lock(
+            assetType,
+            sender,
+            params.receiver,
+            params.amount,
+            params.token,
+            params.tokenId,
+            params.targetChain
+        );
+        return true;
+    }
+
+    /// @notice Burn tokens if the user is permitted to burn
+    /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
+    /// @param params BridgeParams structure (see definition in IBridge.sol)
+    /// @return True if tokens were burned successfully
+    function burnWithPermit(Assets assetType, BridgeParams calldata params)
+        external
+        isSupportedChain(params.targetChain)
+        nonReentrant
+        returns(bool) 
+    {       
+        require(assetType != Assets.Native, "Bridge: wrong asset, can't burn native token");
+        address sender = msg.sender;
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has burnt tokens on the target chain
+        signatureVerification(params, true);
+        // Calculate the fee and save it
+        uint256 feeAmount;
+        if(assetType == Assets.Native || assetType == Assets.ERC20){
+            feeAmount = calcFeeScaled(
+                params.amount,
+                params.stargateAmountForOneUsd,
+                params.transferedTokensAmountForOneUsd,
+                params.payFeesWithST
+            );
+        } else {
+            feeAmount = calcFeeFixed(
+                params.amount,
+                params.stargateAmountForOneUsd,
+                params.payFeesWithST
+            );
+        }
+
+        if(params.payFeesWithST) 
+            payFees(sender, stargateToken, feeAmount);
+        if(!params.payFeesWithST && assetType == Assets.ERC20) 
+            payFees(sender, params.token, feeAmount);
+        //Pay with stablecoins if you bridge ERC721 or ERC1155 and do not want to use ST
+        if(!params.payFeesWithST && (assetType == Assets.ERC721 || assetType == Assets.ERC1155)) 
+            payFees(sender, stablecoin, feeAmount);
+
+        discardAsset(
+            assetType,
+            sender,
+            params.token,
+            params.tokenId,
+            params.amount
+        );
+
+        emit Burn(
+            assetType,
+            sender,
+            params.receiver,
+            params.amount,
+            params.token,
+            params.tokenId,
+            params.targetChain
+        );
+        return true;
+    }
+
+    /// @notice Mint tokens if the user is permitted to mint
+    /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
+    /// @param params BridgeParams structure (see definition in IBridge.sol)
+    /// @return True if tokens were minted successfully
+    function mintWithPermit(Assets assetType, BridgeParams calldata params)
+        external
+        isSupportedChain(params.targetChain)
+        nonReentrant
+        returns(bool) 
     {        
-
+        require(assetType != Assets.Native, "Bridge: wrong asset, can't mint native token");
         address sender = msg.sender;
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFeeScaled(
-            amount,
-            stargateAmountForOneUsd,
-            transferedTokensAmountForOneUsd,
-            payFeesWithST
-        );
-        
-        if(payFeesWithST)
-            payFees(sender, stargateToken, feeAmount);
-        else
-        // Make sure that user sent enough tokens to cover both amount and fee
-            require(msg.value >= amount + feeAmount, "Bridge: not enough native tokens were sent to cover the fees!");
-
-        emit LockNative(sender, receiver, amount, targetChain);
-
-        return true;
-    }
-
-    /**
-     * NOTE Sections with other types of tokens have `burn` function here. 
-     * There is no scenario where after transfer through the bridge native tokens of the target
-     * chain will be minted to the user's address. Only ERC20, ERC721 or ERC1155 can. Thus no
-     * native tokens can be burnt before transfering tokens backwards.
-     */
-
-    /// @notice Unlocks native tokens if the user is permitted to unlock
-    /// @param amount The amount of tokens to unlock
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfully
-    function unlockWithPermitNative(
-        uint256 amount,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Check if there is enough native tokens on the bridge (no fees)
-        require(
-            address(this).balance >= amount,
-            "Bridge: not enough native tokens on the bridge balance!"
-        );
-
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationNative(amount, sender, nonce, v, r, s);
+        signatureVerification(params, false);
 
-        // Transfer native tokens of the original chain from the bridge to the caller
-        (bool success, ) = sender.call{ value: amount }("");
-        require(success, "Bridge: tokens unlock failed!");
+        mintAsset(
+            assetType,
+            sender,
+            params.token,
+            params.tokenId,
+            params.amount
+        );
 
-        emit UnlockWithPermitNative(sender, amount);
-
+        emit Mint(
+            assetType,
+            sender,
+            params.receiver,
+            params.amount,
+            params.token,
+            params.tokenId,
+            params.targetChain
+        );
         return true;
-        
     }
 
-    /// @dev Verifies that a signature of PERMIT_DIGEST for native tokens is valid 
-    /// @param amount The amount of tokens of the digest
-    /// @param msgSender The address of account on another chain
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    function signatureVerificationNative(
-        uint256 amount,
-        address msgSender,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+    /// @notice Unlocks tokens if the user is permitted to unlock
+    /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
+    /// @param params BridgeParams structure (see definition in IBridge.sol)
+    /// @return True if tokens were unlocked successfully
+    function unlockWithPermit(Assets assetType, BridgeParams calldata params)
+        external
+        isSupportedChain(params.targetChain)
+        nonReentrant
+        returns(bool) 
+    {        
+        address sender = msg.sender;
+        // Verify the signature (contains v, r, s) using the domain separator
+        // This will prove that the user has burnt tokens on the target chain
+        signatureVerification(params, false);
+        
+        unlockAsset(
+            assetType,
+            sender,
+            params.token,
+            params.tokenId,
+            params.amount
+        );
+
+        emit Unlock(
+            assetType,
+            sender,
+            params.receiver,
+            params.amount,
+            params.token,
+            params.tokenId,
+            params.targetChain
+        );
+        return true;
+    }
+
+    /// @dev Verifies that a signature is valid 
+    /// @param params BridgeParams structure (see definition in IBridge.sol)
+    /// @param verifyPrice true - if price verification is needed to calculate fee
+    function signatureVerification(
+        BridgeParams calldata params,
+        bool verifyPrice
     ) internal {
-            require(!nonces[nonce], "Bridge: request already processed!");
+            require(!nonces[params.nonce], "Bridge: request already processed!");
 
-            bytes32 permitDigest = EIP712Utils.getPermitDigestNative(
-                amount,
-                msgSender,
-                nonce
+            bytes32 permitDigest = EIP712Utils.getPermitDigest(
+                params,
+                verifyPrice
             );
-
             // Recover the signer of the PERMIT_DIGEST
-            address signer = ecrecover(permitDigest, v, r, s);
+            address signer = ecrecover(permitDigest, params.v, params.r, params.s);
             // Compare the recover and the required signer
             require(signer == botMessenger, "Bridge: invalid signature!");
 
-            nonces[nonce] = true;
-            lastNonce = nonce;
-    }
-
-    //==========ERC20 Tokens Functions==========
-
-    /// @notice Locks ERC20 tokens on the source chain
-    /// @param token Address of the token to lock
-    /// @param amount The amount of tokens to lock
-    /// @param receiver The receiver of wrapped tokens
-    /// @param targetChain The name of the target chain
-    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
-    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
-    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
-    /// @return True if tokens were locked successfully
-    function lockWithPermitERC20(
-        address token,
-        uint256 amount,
-        string memory receiver,
-        string memory targetChain,
-        uint256 stargateAmountForOneUsd,
-        uint256 transferedTokensAmountForOneUsd,
-        bool payFeesWithST
-    )
-    external
-    isSupportedChain(targetChain)
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFeeScaled(
-            amount,
-            stargateAmountForOneUsd,
-            transferedTokensAmountForOneUsd,
-            payFeesWithST
-        );
-
-        // NOTE ERC20.increaseAllowance(address(this), amount) must be called on the backend 
-        // before transfering the tokens
-
-        // After this transfer all tokens are in possesion of the bridge contract and they can not be
-        // withdrawn by explicitly calling `ERC20.safeTransferFrom` of `ERC20.transferFrom` because the bridge contract
-        // does not provide allowance of these tokens for anyone. The only way to transfer tokens from the
-        // bridge contract to some other address is to call `ERC20.safeTransfer` inside the contract itself.
-        // Thus, transfered tokens are locked inside the bridge contract
-        // Transfer additional fee with the initial amount of tokens
-        IWrappedERC20(token).safeTransferFrom(sender, address(this), amount);
-
-        if(payFeesWithST)
-            payFees(sender, stargateToken, feeAmount);
-        else
-            payFees(sender, token, feeAmount);
-        // Emit the lock event with detailed information
-        emit LockERC20(token, sender, receiver, amount, targetChain);
-
-        return true;
-
-    }
-
-    /// @notice Burns ERC20 tokens on a target chain
-    /// @param token The address of the token to burn
-    /// @param amount The amount of tokens to burn
-    /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
-    /// @param targetChain The name of the target chain
-    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
-    /// @param transferedTokensAmountForOneUsd TT tokens amount for one USD
-    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
-    /// @return True if tokens were burnt successfully
-    function burnWithPermitERC20(
-        address token,
-        uint256 amount,
-        string memory receiver,
-        string memory targetChain,
-        uint256 stargateAmountForOneUsd,
-        uint256 transferedTokensAmountForOneUsd,
-        bool payFeesWithST
-    )
-    external
-    isSupportedChain(targetChain)
-    nonReentrant
-    returns(bool)
-    {   
-
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFeeScaled(
-            amount,
-            stargateAmountForOneUsd,
-            transferedTokensAmountForOneUsd,
-            payFeesWithST
-        );
-
-        // Transfer user's tokens (and a fee) to the bridge contract from target chain account
-        // NOTE This method should be called from the address on the target chain
-        //IWrappedERC20(token).safeTransferFrom(sender, address(this), amount);
-        // And burn them immediately
-        // Burn all tokens except the fee
-        IWrappedERC20(token).burn(sender, amount);
-
-        if(payFeesWithST)
-            payFees(sender, stargateToken, feeAmount);
-        else
-            payFees(sender, token, feeAmount);
-
-        emit BurnERC20(token, sender, receiver, amount, targetChain);
-        return true;
-    }
-
-    /// @notice Mints ERC20 tokens if the user is permitted to do so
-    /// @param token The address of the token to mint
-    /// @param amount The amount of tokens to mint
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were minted successfully
-    function mintWithPermitERC20(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {   
-
-        address sender = msg.sender;
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has locked tokens on the source chain
-        signatureVerificationERC20(token, amount, nonce, sender, v, r, s);
-        // Mint wrapped tokens to the user's address on the target chain
-        // NOTE This method should be called from the address on the target chain 
-        IWrappedERC20(token).mint(sender, amount);
-
-        emit MintWithPermitERC20(token, sender, amount);
-
-        return true;
-    }
-
-    /// @notice Unlocks ERC20 tokens if the user is permitted to unlock
-    /// @param token The address of the token to unlock
-    /// @param amount The amount of tokens to unlock
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfully
-    function unlockWithPermitERC20(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Check if there is enough custom tokens on the bridge (no fees)
-        require(
-            IWrappedERC20(token).balanceOf(address(this)) >= amount,
-            "Bridge: not enough ERC20 tokens on the bridge balance!"
-        );
-
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationERC20(token, amount, nonce, sender, v, r, s);
-
-        // This is the only way to withdraw locked tokens from the bridge contract
-        // (see `lock` method of this contract)
-        IWrappedERC20(token).safeTransfer(sender, amount);
-
-        emit UnlockWithPermitERC20(token, sender, amount);
-
-        return true;  
-        
-    }
-
-
-    /// @dev Verifies that a signature of PERMIT_DIGEST for ERC20 tokens is valid 
-    /// @param token The address of transfered token
-    /// @param amount The amount of tokens of the digest
-    /// @param msgSender The address of account on another chain
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    function signatureVerificationERC20(
-        address token,
-        uint256 amount,
-        uint256 nonce,
-        address msgSender,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal {
-            require(!nonces[nonce], "Bridge: request already processed!");
-
-            bytes32 permitDigest = EIP712Utils.getPermitDigestERC20(
-                token,
-                amount,
-                msgSender,
-                nonce
-            );
-
-            // Recover the signer of the PERMIT_DIGEST
-            address signer = ecrecover(permitDigest, v, r, s);
-            // Compare the recover and the required signer
-            require(signer == botMessenger, "Bridge: invalid signature!");
-
-            nonces[nonce] = true;
-            lastNonce = nonce;
-    }
-
-    //==========ERC721 Tokens Functions==========
-
-    /// @notice Locks ERC721 token on the source chain
-    /// @param token The address of the token to lock
-    /// @param tokenId The ID of the token to lock
-    /// @param receiver The receiver of wrapped tokens
-    /// @param targetChain The name of the target chain
-    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
-    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
-    /// @return True if tokens were locked successfully
-    function lockWithPermitERC721(
-        address token,
-        uint256 tokenId,
-        string memory receiver,
-        string memory targetChain,
-        uint256 stargateAmountForOneUsd,
-        bool payFeesWithST
-    ) 
-    external 
-    returns(bool) 
-    {
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFeeFixed(
-            1,
-            stargateAmountForOneUsd,
-            payFeesWithST
-        );
-
-        // NOTE ERC721.setApprovalForAll(address(this), true) must be called on the backend 
-        // before transfering the tokens
-
-        IWrappedERC721(token).safeTransferFrom(sender, address(this), tokenId);
-
-        if(payFeesWithST)
-            payFees(sender, stargateToken, feeAmount);
-        else
-            payFees(sender, token, feeAmount);
-
-        // Emit the lock event with detailed information
-        emit LockERC721(token, tokenId, sender, receiver, targetChain);
-
-        return true;
-    }
-
-
-    /// @notice Burns ERC721 tokens on a target chain
-    /// @param token The address of the token to burn 
-    /// @param tokenId The ID of the token to lock
-    /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
-    /// @param targetChain The name of the target chain
-    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
-    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
-    /// @return True if tokens were burnt successfully
-    function burnWithPermitERC721(
-        address token,
-        uint256 tokenId,
-        string memory receiver,
-        string memory targetChain,
-        uint256 stargateAmountForOneUsd,
-        bool payFeesWithST
-    )
-    external
-    isSupportedChain(targetChain)
-    nonReentrant
-    returns(bool)
-    {   
-
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFeeFixed(
-            1,
-            stargateAmountForOneUsd,
-            payFeesWithST
-        );
-
-        IWrappedERC721(token).burn(tokenId);
-
-        if(payFeesWithST)
-            payFees(sender, stargateToken, feeAmount);
-        else
-            payFees(sender, stablecoin, feeAmount);
-
-        emit BurnERC721(token, tokenId, sender, receiver, targetChain);
-
-        return true;
-    }
-
-
-    /// @notice Mints ERC721 tokens if the user is permitted to do so
-    /// @param token The address of the token to mint
-    /// @param tokenId The ID of token to mint
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were minted successfully
-    function mintWithPermitERC721(
-        address token,
-        uint256 tokenId,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {   
-
-        address sender = msg.sender;
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has locked tokens on the source chain
-        signatureVerificationERC721(nonce, tokenId, v, r, s, token, sender);
-        // Mint wrapped tokens to the user's address on the target chain
-        // NOTE This method should be called from the address on the target chain 
-        IWrappedERC721(token).mint(sender, tokenId);
-
-        emit MintWithPermitERC721(token, tokenId, sender);
-
-        return true;
-    }
-
-
-    /// @notice Unlocks ERC721 tokens if the user is permitted to unlock
-    /// @param token The address of the token to unlock
-    /// @param tokenId The ID of token to unlock
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfully
-    function unlockWithPermitERC721(
-        address token,
-        uint256 tokenId,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Check if there is enough custom tokens on the bridge (no fees)
-        require(
-            IWrappedERC721(token).balanceOf(address(this)) > 0,
-            "Bridge: not enough ERC721 tokens on the bridge balance!"
-        );
-
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationERC721(nonce, tokenId, v, r, s, token, sender);
-
-        IWrappedERC721(token).safeTransferFrom(address(this), sender, tokenId);
-
-        emit UnlockWithPermitERC721(token, tokenId, sender);
-
-        return true;  
-        
-    }
-
-
-    /// @dev Verifies that a signature of PERMIT_DIGEST for ERC721 tokens is valid 
-    /// @param nonce Prevent replay attacks
-    /// @param tokenId The ID of transfered token
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @param token The address of the transered token
-    /// @param msgSender The address of account on another chain
-    function signatureVerificationERC721(
-        uint256 nonce,
-        uint256 tokenId,
-        uint8 v,
-        bytes32 r,
-        bytes32 s,
-        address token,
-        address msgSender
-    ) internal {
-            require(!nonces[nonce], "Bridge: request already processed!");
-
-            bytes32 permitDigest = EIP712Utils.getPermitDigestERC721(
-                token,
-                tokenId,
-                msgSender,
-                nonce
-            );
-
-            // Recover the signer of the PERMIT_DIGEST
-            address signer = ecrecover(permitDigest, v, r, s);
-            // Compare the recover and the required signer
-            require(signer == botMessenger, "Bridge: invalid signature!");
-
-            nonces[nonce] = true;
-            lastNonce = nonce;
-    }
-
-    //==========ERC1155 Tokens Functions==========
-
-    /// @notice Locks ERC1155 token on the source chain
-    /// @param token The address of the token to lock
-    /// @param tokenId The ID of token type
-    /// @param amount The amount of tokens of specifi type
-    /// @param receiver The receiver of wrapped tokens
-    /// @param targetChain The name of the target chain
-    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
-    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
-    /// @return True if tokens were locked successfully
-    function lockWithPermitERC1155(
-        address token,
-        uint256 tokenId,
-        uint amount,
-        string memory receiver,
-        string memory targetChain,
-        uint256 stargateAmountForOneUsd,
-        bool payFeesWithST
-    ) 
-    external 
-    returns(bool) 
-    {
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFeeFixed(
-            amount,
-            stargateAmountForOneUsd,
-            payFeesWithST
-        );
-
-        // NOTE ERC1155.setApprovalForAll(address(this), true) must be called on the backend 
-        // before transfering the tokens
-
-        IWrappedERC1155(token).safeTransferFrom(sender, address(this), tokenId, amount, bytes("iamtoken"));
-
-        if(payFeesWithST)
-            payFees(sender, stargateToken, feeAmount);
-        else
-            payFees(sender, stablecoin, feeAmount);
-
-        // Emit the lock event with detailed information
-        emit LockERC1155(token, tokenId, sender, receiver, amount, targetChain);
-
-        return true;
-    }
-
-
-    /// @notice Burns ERC1155 tokens on a target chain
-    /// @param token The address of the token to burn
-    /// @param tokenId The ID of the token to lock
-    /// @param amount The amount of tokens of specific type
-    /// @param receiver The receiver of unlocked tokens on the original chain (not only EVM)
-    /// @param targetChain The name of the target chain
-    /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
-    /// @param payFeesWithST true if user choose to pay fees with stargate tokens
-    /// @return True if tokens were burnt successfully
-    function burnWithPermitERC1155(
-        address token,
-        uint256 tokenId,
-        uint256 amount,
-        string memory receiver,
-        string memory targetChain,
-        uint256 stargateAmountForOneUsd,
-        bool payFeesWithST
-    )
-    external
-    isSupportedChain(targetChain)
-    nonReentrant
-    returns(bool)
-    {   
-
-        address sender = msg.sender;
-
-        // Calculate the fee and save it
-        uint256 feeAmount = calcFeeFixed(
-            amount,
-            stargateAmountForOneUsd,
-            payFeesWithST
-        );
-
-        // Burn all tokens from user's wallet
-        IWrappedERC1155(token).burn(sender, tokenId, amount);
-
-        if(payFeesWithST)
-            payFees(sender, stargateToken, feeAmount);
-        else
-            payFees(sender, stablecoin, feeAmount);
-
-        emit BurnERC1155(token, tokenId, sender, receiver, amount, targetChain);
-
-        return true;
-    }
-
-    /// @notice Mints ERC1155 tokens if the user is permitted to do so
-    /// @param token The address of the token to mint
-    /// @param tokenId The ID of type of tokens
-    /// @param amount The amount of tokens of specific type
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were minted successfully
-    function mintWithPermitERC1155(
-        address token,
-        uint256 tokenId,
-        uint256 amount,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {   
-
-        address sender = msg.sender;
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has locked tokens on the source chain
-        signatureVerificationERC1155(token, tokenId, amount, sender, nonce, v, r, s);
-        // Mint wrapped tokens to the user's address on the target chain
-        // NOTE This method should be called from the address on the target chain 
-        IWrappedERC1155(token).mint(sender, tokenId, amount);
-
-        emit MintWithPermitERC1155(token, tokenId, sender, amount);
-
-        return true;
-    }
-
-    /// @notice Unlocks ERC1155 tokens if the user is permitted to unlock
-    /// @param token Address of the token to unlock
-    /// @param tokenId The ID of token type
-    /// @param amount The amount of tokens of the type
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    /// @return True if tokens were unlocked successfully
-    function unlockWithPermitERC1155(
-        address token,
-        uint256 tokenId,
-        uint256 amount,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    )
-    external
-    nonReentrant
-    returns(bool)
-    {
-        address sender = msg.sender;
-
-        // Check if there is enough custom tokens on the bridge (no fees)
-        require(
-            IWrappedERC1155(token).balanceOf(address(this), tokenId) > 0,
-            "Bridge: not enough ERC1155 tokens on the bridge balance!"
-        );
-
-
-        // Verify the signature (contains v, r, s) using the domain separator
-        // This will prove that the user has burnt tokens on the target chain
-        signatureVerificationERC1155(token, tokenId, amount, sender, nonce, v, r, s);
-
-        IWrappedERC1155(token).safeTransferFrom(address(this), sender, tokenId, amount, bytes("iamtoken"));
-
-        emit UnlockWithPermitERC1155(token, tokenId, sender, amount);
-
-        return true;  
-        
-    }
-
-    /// @dev Verifies that a signature of PERMIT_DIGEST for ERC1155 tokens is valid 
-    /// @param token The address of transfered
-    /// @param tokenId The ID of transfered token
-    /// @param amount The amount of tokens of specific type
-    /// @param msgSender The address of account on another chain
-    /// @param nonce Prevent replay attacks
-    /// @param v Last byte of the signed PERMIT_DIGEST
-    /// @param r First 32 bytes of the signed PERMIT_DIGEST
-    /// @param s 32-64 bytes of the signed PERMIT_DIGEST
-    function signatureVerificationERC1155(
-        address token,
-        uint256 tokenId,
-        uint256 amount,
-        address msgSender,
-        uint256 nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal {
-            require(!nonces[nonce], "Bridge: request already processed!");
-
-            bytes32 permitDigest = EIP712Utils.getPermitDigestERC1155(
-                token,
-                tokenId,
-                amount,
-                msgSender,
-                nonce
-            );
-
-            // Recover the signer of the PERMIT_DIGEST
-            address signer = ecrecover(permitDigest, v, r, s);
-            // Compare the recover and the required signer
-            require(signer == botMessenger, "Bridge: invalid signature!");
-
-            nonces[nonce] = true;
-            lastNonce = nonce;
+            nonces[params.nonce] = true;
+            lastNonce = params.nonce;
     }
 
     //==========Helper Functions==========
-
 
     /// @notice Sets the admin
     /// @param newAdmin Address of the admin   
@@ -884,6 +343,150 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         emit SetAdmin(newAdmin);
     }
 
+    /// @notice Lock tokens
+    /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
+    /// @param sender Owner of the locked tokens
+    /// @param token Address of the locked token
+    /// @param tokenId ID of the locked ERC721 or ERC1155 token, 0 otherwise
+    /// @param amount An amount of tokens to lock
+    function processAsset(
+        Assets assetType,
+        address sender,
+        address token,
+        uint256 tokenId,
+        uint256 amount
+    ) internal {
+        if(assetType == Assets.Native){
+            require(msg.value >= amount, "Bridge: wrong native tokens amount");
+            return;
+        }
+        if(assetType == Assets.ERC20){
+            IWrappedERC20(token).safeTransferFrom(sender, address(this), amount);
+            return;
+        }
+        if(assetType == Assets.ERC721){
+            IWrappedERC721(token).safeTransferFrom(sender, address(this), tokenId);
+            return;
+        }
+        if(assetType == Assets.ERC1155){
+            IWrappedERC1155(token).safeTransferFrom(sender, address(this), tokenId, amount, bytes("iamtoken"));   
+            return;
+        }
+        revert("Bridge: wrong asset");
+    }
+
+    /// @notice Burn tokens
+    /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
+    /// @param sender Owner of thetokens
+    /// @param token Address of the token
+    /// @param tokenId ID of the ERC721 or ERC1155 token, 0 otherwise
+    /// @param amount An amount of tokens to burn
+    function discardAsset(
+        Assets assetType,
+        address sender,
+        address token,
+        uint256 tokenId,
+        uint256 amount
+    ) internal {
+        if(assetType == Assets.ERC20){
+            IWrappedERC20(token).burn(sender, amount);
+            return;
+        }
+        if(assetType == Assets.ERC721){
+            require(
+                IWrappedERC721(token).ownerOf(tokenId) == msg.sender,
+                "Bridge: cannot burn ERC721, msg.sender not owner"
+            );
+            IWrappedERC721(token).burn(tokenId);
+            return;
+        }
+        if(assetType == Assets.ERC1155){
+            IWrappedERC1155(token).burn(sender, tokenId, amount);   
+            return;
+        }
+        revert("Bridge: wrong asset");
+    }
+
+    /// @notice Mint wrapped tokens
+    /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
+    /// @param sender receiver of the minted tokens
+    /// @param token Address of the wrapped token
+    /// @param tokenId ID of the wrapped ERC721 or ERC1155 token, 0 otherwise
+    /// @param amount An amount of tokens to mint
+    function mintAsset(
+        Assets assetType,
+        address sender,
+        address token,
+        uint256 tokenId,
+        uint256 amount
+    ) internal {
+        if(assetType == Assets.ERC20){
+            IWrappedERC20(token).mint(sender, amount);
+            return;
+        }
+        if(assetType == Assets.ERC721){
+            IWrappedERC721(token).mint(sender, tokenId);
+            return;
+        }
+        if(assetType == Assets.ERC1155){
+            IWrappedERC1155(token).mint(sender, tokenId, amount);   
+            return;
+        }
+        revert("Bridge: wrong asset");
+    }
+
+    /// @notice Transfers locked token back to it's owner
+    /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
+    /// @param sender Owner of the locked tokens
+    /// @param token Address of the locked token
+    /// @param tokenId ID of the locked ERC721 or ERC1155 token, 0 otherwise
+    /// @param amount An amount of tokens to unlock
+    function unlockAsset(
+        Assets assetType,
+        address sender,
+        address token,
+        uint256 tokenId,
+        uint256 amount
+    ) internal {
+        if(assetType == Assets.Native){
+        // Check if there is enough native tokens on the bridge (no fees)
+            require(
+                address(this).balance >= amount,
+                "Bridge: not enough native tokens on the bridge balance!"
+            );
+            (bool success, ) = sender.call{ value: amount }("");
+            require(success, "Bridge: native tokens unlock failed!");
+            return;
+        }
+        if(assetType == Assets.ERC20){
+        // Check if there is enough custom tokens on the bridge (no fees)
+            require(
+                IWrappedERC20(token).balanceOf(address(this)) >= amount,
+                "Bridge: not enough ERC20 tokens on the bridge balance!"
+            );
+            IWrappedERC20(token).safeTransfer(sender, amount);
+            return;
+        }
+        if(assetType == Assets.ERC721){
+        // Check if bridge owns the token
+            require(
+                IWrappedERC721(token).ownerOf(tokenId) == address(this),
+                "Bridge: bridge doesn't own token with this ID!"
+            );
+            IWrappedERC721(token).safeTransferFrom(address(this),sender, tokenId);
+            return;
+        }
+        if(assetType == Assets.ERC1155){
+        // Check if there is enough custom tokens on the bridge (no fees)
+            require(
+                IWrappedERC1155(token).balanceOf(address(this), tokenId) > 0,
+                "Bridge: not enough ERC1155 tokens on the bridge balance!"
+            );
+            IWrappedERC1155(token).safeTransferFrom(address(this), sender, tokenId, amount, bytes("iamtoken"));   
+            return;
+        }
+        revert("Bridge: wrong asset");
+    }
     /// @notice Calculates a fee for bridge operations with ERC20 and native tokens
     /// @param amount An amount of TT tokens that were sent
     /// @param stargateAmountForOneUsd Stargate tokens (ST) amount for one USD
@@ -935,7 +538,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
             result = result / PERCENT_DENOMINATOR;
         }
         else {
-            result = amount * IWrappedERC20(stablecoin).decimals() * ERC721_1155_FEE_USD;
+            result = amount * (10 ** IWrappedERC20(stablecoin).decimals()) * ERC721_1155_FEE_USD;
             result = result / PERCENT_DENOMINATOR;
         }
         return result;
@@ -943,7 +546,7 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
 
     /// @notice Transfer fees from user's wallet to contract address
     /// @param sender user's address
-    /// @param token address pf token in which fees are paid
+    /// @param token address of token in which fees are paid
     /// @param feeAmount fee amount
     function payFees(address sender, address token, uint256 feeAmount) internal {
         tokenFees[token] += feeAmount;
@@ -958,12 +561,12 @@ contract Bridge is IBridge, IERC721Receiver, AccessControl, ReentrancyGuard {
         require(tokenFees[token] >= amount, "Bridge: amount of fees to withdraw is too large!");
         
         tokenFees[token] -= amount;
-        
-        IWrappedERC20(token).safeTransfer(msg.sender, amount);
-        //require(success, "Bridge: tokens withdrawal failed!");
-
+        if(token == address(0)){
+            (bool success, ) = msg.sender.call{ value: amount }("");
+            require(success, "Bridge: native tokens withdraw failed!");
+        } else
+            IWrappedERC20(token).safeTransfer(msg.sender, amount);
         emit Withdraw(msg.sender, amount);
-
     }
 
     /// @notice Adds a chain supported by the bridge
