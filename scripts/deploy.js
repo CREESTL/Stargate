@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: MIT 
 
-const { ethers, network } = require("hardhat");
+const { ethers, upgrades, network } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
 const delay = require("delay");
+const config = require("../config")
 
-const { ACC_ADDRESS } = process.env;
-
+const {ACC_ADDRESS} = config;
 // JSON file to keep information about previous deployments
 const OUTPUT_DEPLOY = require("./deployOutput.json");
-
 
 let contractName;
 
 async function main() {
 
   let [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners();
-
+  let tokens = config[network.name];
   console.log(`[NOTICE!] Chain of deployment: ${network.name}`);
 
   // ====================================================
@@ -27,7 +26,15 @@ async function main() {
   contractName = "Bridge";
   console.log(`[${contractName}]: Start of Deployment...`);
   _contractProto = await ethers.getContractFactory(contractName);
-  contractDeployTx = await _contractProto.deploy(ACC_ADDRESS);
+  contractDeployTx = await upgrades.deployProxy(
+    _contractProto,
+    [
+      ACC_ADDRESS,
+      tokens.STABLECOIN,
+      tokens.STARGATE
+    ],
+    {initializer:'initialize'}
+  );
   bridge = await contractDeployTx.deployed();
   console.log(`[${contractName}]: Deployment Finished!`);
   OUTPUT_DEPLOY[network.name][contractName].address = bridge.address;
@@ -48,11 +55,11 @@ async function main() {
     url = "https://mumbai.polygonscan.com/address/" + bridge.address + "#code";
   } else if (network.name === "ethereum") {
     url = "https://etherscan.io/address/" + bridge.address + "#code";
-  } else if (network.name === "rinkeby") {
-    url = "https://rinkeby.etherscan.io/address/" + bridge.address + "#code";
+  } else if (network.name === "goerli") {
+    url = "https://goerli.etherscan.io/address/" + bridge.address + "#code";
   } else if (network.name === "bsc") {
     url = "https://bscscan.com/address/" + bridge.address + "#code";
-  } else if (network.name === "chapel") {
+  } else if (network.name === "bsc_testnet") {
     url = "https://testnet.bscscan.com/address/" + bridge.address + "#code";
   }
   OUTPUT_DEPLOY[network.name][contractName].verification = url;
@@ -63,9 +70,6 @@ async function main() {
   try { 
     await hre.run("verify:verify", {
       address: bridge.address,
-      constructorArguments: [
-        ACC_ADDRESS
-      ]
     });
   } catch (error) {
     console.error(error);
@@ -80,7 +84,15 @@ async function main() {
   contractName = "WrappedTokenFactory";
   console.log(`[${contractName}]: Start of Deployment...`);
   _contractProto = await ethers.getContractFactory(contractName);
-  contractDeployTx = await _contractProto.deploy();
+  contractDeployTx = await upgrades.deployProxy(
+    _contractProto,
+    [
+      tokens.ERC20,
+      tokens.ERC721,
+      tokens.ERC1155
+    ],
+    {initializer:'initialize'}
+  );
   factory = await contractDeployTx.deployed();
   console.log(`[${contractName}]: Deployment Finished!`);
   OUTPUT_DEPLOY[network.name][contractName].address = factory.address;
@@ -101,12 +113,12 @@ async function main() {
     url = "https://mumbai.polygonscan.com/address/" + factory.address + "#code";
   } else if (network.name === "ethereum") {
     url = "https://etherscan.io/address/" + factory.address + "#code";
-  } else if (network.name === "rinkeby") {
-    url = "https://rinkeby.etherscan.io/address/" + factory.address + "#code";
+  } else if (network.name === "goerli") {
+    url = "https://goerli.etherscan.io/address/" + factory.address + "#code";
   } else if (network.name === "bsc") {
     url = "https://bscscan.com/address/" + factory.address + "#code";
-  } else if (network.name === "chapel") {
-    url = "https://testnet.bscscan.com/address/" + bridge.address + "#code";
+  } else if (network.name === "bsc_testnet") {
+    url = "https://testnet.bscscan.com/address/" + factory.address + "#code";
   }
 
   OUTPUT_DEPLOY[network.name][contractName].verification = url;

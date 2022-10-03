@@ -4,10 +4,10 @@
 
 ## Унификация функций lock, unlock, burn, mint
 В отличие от старой версии контракта, теперь мы используем одни и те же функции для всех типов токенов (например mintWithPermit вместо mintWithPermitERC20, mintWithPermitERC721 и.т.д.)
-- [lockWithPermit](#assets-bridgeparams-1)
-- [unlockWithPermit](#assets-bridgeparams-1)
-- [burnWithPermit](#assets-bridgeparams-1)
-- [mintWithPermit](#assets-bridgeparams-1)
+- [lockWithPermit](#assets-bridgeparams)
+- [unlockWithPermit](#assets-bridgeparams)
+- [burnWithPermit](#assets-bridgeparams)
+- [mintWithPermit](#assets-bridgeparams)
 
 ## Изменения в оплате комиссии
 Теперь пользователи платят комиссии за lock и burn операции по выбору либо в stargate (ST), либо в токенах которые они бриджат (TT). Также в случае ERC721, ERC1155 для оплаты комиссии используются USD стейблкойн. Для этого бэк должен предоставить обменный курс  USD/ST, USD/TT.

@@ -1,32 +1,32 @@
 {
-  "rinkeby": {
+  "goerli": {
     "Bridge": {
-      "address": "0x7bA17c286dFC01188B1a5b333BCDF28D25fbf56E",
-      "verification": "https://rinkeby.etherscan.io/address/0x7bA17c286dFC01188B1a5b333BCDF28D25fbf56E#code"
+      "address": "0x04CFcaA81C7A624cED4C42Fb11f5134dAB624706",
+      "verification": "https://goerli.etherscan.io/address/0x04CFcaA81C7A624cED4C42Fb11f5134dAB624706#code"
     },
     "WrappedTokenFactory": {
-      "address": "0x00a35F9853F2F64Adf887e776bd88a2400222836",
-      "verification": "https://rinkeby.etherscan.io/address/0x00a35F9853F2F64Adf887e776bd88a2400222836#code"
+      "address": "0xE602E06868A991a48c68D30bACa074d1Dc398593",
+      "verification": "https://goerli.etherscan.io/address/0xE602E06868A991a48c68D30bACa074d1Dc398593#code"
     }
   },
   "mumbai": {
     "Bridge": {
-      "address": "0x32784Fe061F92746e036124160b169BC36fc98b5",
-      "verification": "https://mumbai.polygonscan.com/address/0x32784Fe061F92746e036124160b169BC36fc98b5#code"
+      "address": "0x36fC8E6f2CC6C34917908Ad94985079f12DC4f6e",
+      "verification": "https://mumbai.polygonscan.com/address/0x36fC8E6f2CC6C34917908Ad94985079f12DC4f6e#code"
     },
     "WrappedTokenFactory": {
-      "address": "0xf76397b8a3BcE81694127537152103555F2cEC37",
-      "verification": "https://mumbai.polygonscan.com/address/0xf76397b8a3BcE81694127537152103555F2cEC37#code"
+      "address": "0x2D65b8a41013148C0d6386E783A587E0ba802fFC",
+      "verification": "https://mumbai.polygonscan.com/address/0x2D65b8a41013148C0d6386E783A587E0ba802fFC#code"
     }
   },
-  "chapel": {
+  "bsc_testnet": {
     "Bridge": {
-      "address": "0x00a35F9853F2F64Adf887e776bd88a2400222836",
-      "verification": "https://testnet.bscscan.com/address/0x00a35F9853F2F64Adf887e776bd88a2400222836#code"
+      "address": "0x660A183D371AA65830A5D71c66282Afb05aD0F9d",
+      "verification": "https://testnet.bscscan.com/address/0x660A183D371AA65830A5D71c66282Afb05aD0F9d#code"
     },
     "WrappedTokenFactory": {
-      "address": "0x25d49C53009ED867c7E429d1b979F6F4e8125cFA",
-      "verification": "https://testnet.bscscan.com/address/0x00a35F9853F2F64Adf887e776bd88a2400222836#code"
+      "address": "0xa649AeaC12A5D653F5ce70a65e5B71C68457a16d",
+      "verification": "https://testnet.bscscan.com/address/0xa649AeaC12A5D653F5ce70a65e5B71C68457a16d#code"
     }
   },
   "ethereum": {
