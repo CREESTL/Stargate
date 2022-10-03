@@ -1,11 +1,12 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 require("@nomiclabs/hardhat-ethers");
+require("@openzeppelin/hardhat-upgrades");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomicfoundation/hardhat-chai-matchers");
-require("solidity-coverage");
-require("hardhat-gas-reporter");
 require("hardhat-change-network");
+require('hardhat-contract-sizer');
+require("solidity-coverage");
 
 const {
         BSCSCAN_API_KEY,
@@ -32,9 +33,9 @@ module.exports = {
     localhost: {
       url: "http://127.0.0.1:8545",
     },
-    // BSC Chapel testnet
-    chapel: {
-      url: `https://rpc.ankr.com/bsc_testnet_chapel/`,
+    // BSC testnet
+    bsc_testnet: {
+      url: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
       accounts: [ACC_PRIVATE_KEY]
     },
     // BSC mainnet
@@ -44,7 +45,7 @@ module.exports = {
     },
     // Polygon Mumbai testnet
     mumbai: {
-      url: "https://rpc-mumbai.maticvigil.com",
+      url:  "https://matic-mumbai.chainstacklabs.com",
       accounts: [ACC_PRIVATE_KEY]
     },
     // Polygon mainnet
@@ -53,8 +54,8 @@ module.exports = {
       accounts: [ACC_PRIVATE_KEY]
     },
     // Ethereum Rinkeby testnet
-    rinkeby: {
-      url: `https://rinkeby.infura.io/v3/${INFURA_API_KEY}`,
+    goerli: {
+      url: 'https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
       accounts: [ACC_PRIVATE_KEY]
     },
     // Ethereum mainnet
@@ -68,11 +69,8 @@ module.exports = {
   },
   etherscan: {
     apiKey: {
-      bscTestnet: BSCSCAN_API_KEY,
       bsc: BSCSCAN_API_KEY,
       ethereum: ETHERSCAN_API_KEY,
-      rinkeby: ETHERSCAN_API_KEY,
-      polygonMumbai: POLYGONSCAN_API_KEY,
       polygon: POLYGONSCAN_API_KEY
     }
   },
