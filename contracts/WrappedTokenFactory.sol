@@ -10,12 +10,13 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 
 
 /// @title A factory of custom ERC20, ERC721, ERC1155 tokens used in the bridge
-contract WrappedTokenFactory is IWrappedERC20Factory {
-
+contract WrappedTokenFactory is IWrappedERC20Factory, Initializable {
+    // @dev Padding 100 words of storage for upgradeability. Follows OZ's guidance.
+    uint256[100] private __gap;
     /// @dev Addresses of token templates to clone
-    address private immutable ERC20Template;
-    address private immutable ERC721Template;
-    address private immutable ERC1155Template;
+    address private ERC20Template;
+    address private ERC721Template;
+    address private ERC1155Template;
 
     /// @dev Map of addresses of tokens in the original and target chains
     mapping(address => address) internal originalToWrappedTokens;
@@ -38,11 +39,19 @@ contract WrappedTokenFactory is IWrappedERC20Factory {
     /// @dev Should be used by the back/front-end
     mapping(string => address) internal wrappedUriToAddress;
 
-    /// @dev Create a new token template to copy and upgrade it later
-    constructor() {
-        ERC20Template = address(new WrappedERC20());
-        ERC721Template = address(new WrappedERC721());
-        ERC1155Template = address(new WrappedERC1155());
+    /// @dev config token templates to copy and upgrade it later
+    /// @param _ERC20Template template for ERC20 tokens
+    /// @param _ERC721Template template for ERC721 tokens
+    /// @param _ERC1155Template template for ERC1155 tokens
+    function initialize(
+        address _ERC20Template,
+        address _ERC721Template,
+        address _ERC1155Template
+    ) public initializer
+    {
+        ERC20Template = _ERC20Template;
+        ERC721Template = _ERC721Template;
+        ERC1155Template = _ERC1155Template;
     }
 
     /// @notice Checks if there is a wrapped token in the target chain for the original token 

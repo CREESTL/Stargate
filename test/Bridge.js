@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 const { expect } = require("chai");
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
@@ -59,7 +59,15 @@ describe('Bridge', () => {
     tokenERC721 = await tokenERC721Tx.deploy();
     tokenERC1155 = await tokenERC1155Tx.deploy();
 
-    bridge = await bridgeTx.deploy(botMessenger.address, stablecoin.address, stargateToken.address);
+    bridge = await upgrades.deployProxy(
+      bridgeTx,
+      [
+        botMessenger.address,
+        stablecoin.address,
+        stargateToken.address
+      ],
+      {initializer:'initialize'}
+    );
 
     await tokenERC20.deployed();
     await tokenERC20.initialize("Integral", "SFXDX", 18, bridge.address);
@@ -1996,13 +2004,36 @@ describe('Bridge', () => {
       .to.emit(bridge, "SetNewChain").withArgs(anyValue);
 	  });
 
-		it('reverts on a deploy with zero addresses constructor args', async() => {
-      await expect(bridgeTx.deploy(addressZero, owner.address, owner.address))
-          .to.be.revertedWith("Bridge: default bot messenger can not be zero address!");
-      await expect(bridgeTx.deploy(owner.address, addressZero, owner.address))
-          .to.be.revertedWith("Bridge: stablecoin can not be zero address!");
-      await expect(bridgeTx.deploy(owner.address, owner.address, addressZero))
-          .to.be.revertedWith("Bridge: stargate token can not be zero address!");
+		it('reverts on init with zero addresses args', async() => {
+      await expect(upgrades.deployProxy(
+        bridgeTx,
+        [
+          addressZero,
+          stablecoin.address,
+          stargateToken.address
+        ],
+        {initializer:'initialize'}
+      )).to.be.revertedWith("Bridge: default bot messenger can not be zero address!");
+
+      await expect(upgrades.deployProxy(
+        bridgeTx,
+        [
+          botMessenger.address,
+          addressZero,
+          stargateToken.address
+        ],
+        {initializer:'initialize'}
+      )).to.be.revertedWith("Bridge: stablecoin can not be zero address!");
+
+      await expect(upgrades.deployProxy(
+        bridgeTx,
+        [
+          botMessenger.address,
+          stablecoin.address,
+          addressZero
+        ],
+        {initializer:'initialize'}
+      )).to.be.revertedWith("Bridge: stargate token can not be zero address!");
     });
 	});
 });

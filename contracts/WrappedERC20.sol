@@ -2,13 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 import "./interfaces/IWrappedERC20.sol";
 
 /// @title A custom ERC20 contract used in the bridge
-contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
+contract WrappedERC20 is IWrappedERC20, ERC20Upgradeable {
 
     address internal _bridge;
     uint8 internal _decimals;
@@ -22,7 +21,6 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
     }
 
     /// @dev Creates an "empty" template token that will be cloned in the future
-    constructor() ERC20("", "") {}
 
     /// @dev Upgrades an "empty" template. Initializes internal variables. 
     /// @param name_ The name of the token
@@ -47,19 +45,19 @@ contract WrappedERC20 is IWrappedERC20, ERC20, Initializable {
 
     /// @notice Returns the name of the token
     /// @return The name of the token
-    function name() public view override(ERC20, IWrappedERC20) returns(string memory) {
+    function name() public view override(ERC20Upgradeable, IWrappedERC20) returns(string memory) {
         return _tokenName;
     }
 
     /// @notice Returns the symbol of the token
     /// @return The symbol of the token
-    function symbol() public view override(ERC20, IWrappedERC20) returns(string memory) {
+    function symbol() public view override(ERC20Upgradeable, IWrappedERC20) returns(string memory) {
         return _tokenSymbol;
     }
 
     /// @notice Returns number of decimals of the token
     /// @return The number of decimals of the token
-    function decimals() public view override(ERC20, IWrappedERC20) returns(uint8) {
+    function decimals() public view override(ERC20Upgradeable, IWrappedERC20) returns(uint8) {
         return _decimals;
     }
 

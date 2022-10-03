@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 /// @title An interface for a custom ERC20 contract used in the bridge
-interface IWrappedERC20 is IERC20 {
+interface IWrappedERC20 is IERC20Upgradeable {
 
     /// @notice Returns the name of the token
     /// @return The name of the token

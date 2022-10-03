@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
@@ -21,12 +21,14 @@ import "hardhat/console.sol";
 contract Bridge is
     EIP712Utils,
     IERC721Receiver,
-    AccessControl,
-    ReentrancyGuard
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable
 {
 
-    using SafeERC20 for IWrappedERC20;
+    using SafeERC20Upgradeable for IWrappedERC20;
 
+    // @dev Padding 100 words of storage for upgradeability. Follows OZ's guidance.
+    uint256[100] private __gap;
     /// @dev Names of supported chains
     mapping(string => bool) public supportedChains;
     /// @dev Monitor fees for ERC20 tokens
@@ -71,11 +73,12 @@ contract Bridge is
     /// @param _botMessenger The address of bot messenger
     /// @param _stablecoin The address of USD stablecoin
     /// @param _stargateToken The address of stargate token 
-    constructor(
+    function initialize(
         address _botMessenger,
         address _stablecoin,
         address _stargateToken
-    ) { 
+    ) public initializer
+    {
         require(_botMessenger != address(0), "Bridge: default bot messenger can not be zero address!");
         require(_stablecoin != address(0), "Bridge: stablecoin can not be zero address!");
         require(_stargateToken != address(0), "Bridge: stargate token can not be zero address!");

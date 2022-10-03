@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 const { expect } = require("chai");
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
@@ -16,16 +16,42 @@ describe('Factory', () => {
 
   beforeEach( async () => {
     [owner, client, acc3, acc4, bridge] = await ethers.getSigners();
-    let tokenTx = await ethers.getContractFactory("WrappedERC20");
-    let factoryTx = await ethers.getContractFactory("WrappedTokenFactory");
-    let bridgeTx = await ethers.getContractFactory("Bridge");
-    // Owner is a bot messenger. Fee rate is 1%
-    bridge = await bridgeTx.deploy(owner.address, owner.address, owner.address);
-    token = await tokenTx.deploy();
-    factory = await factoryTx.deploy();
+    let token20Tx = await ethers.getContractFactory("WrappedERC20");
+    let token721Tx = await ethers.getContractFactory("WrappedERC721");
+    let token1155Tx = await ethers.getContractFactory("WrappedERC1155");
 
-    await token.deployed();
-    await token.initialize("Integral", "SFXDX", 18, bridge.address);
+    token20 = await token20Tx.deploy();
+    await token20.deployed();
+    await token20.initialize("Integral", "SFXDX", 18, bridge.address);
+    token721 = await token721Tx.deploy();
+    await token721.deployed();
+    await token721.initialize("Integral", "SFXDX", bridge.address);
+    token1155 = await token1155Tx.deploy();
+    await token1155.deployed();
+    await token1155.initialize("IAMTOKEN", bridge.address);
+
+    let factoryTx = await ethers.getContractFactory("WrappedTokenFactory");
+    factory = await upgrades.deployProxy(
+      factoryTx,
+      [
+        token20.address,
+        token721.address,
+        token1155.address
+      ],
+      {initializer:'initialize'}
+    );
+
+    let bridgeTx = await ethers.getContractFactory("Bridge");
+    bridge = await upgrades.deployProxy(
+      bridgeTx,
+      [
+        owner.address,
+        owner.address,
+        owner.address
+      ],
+      {initializer:'initialize'}
+    );
+    // Owner is a bot messenger. Fee rate is 1%
     await factory.deployed();
     await bridge.deployed();
 
