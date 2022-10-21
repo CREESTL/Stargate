@@ -58,7 +58,7 @@ module.exports = {
       url: 'https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
       accounts: [ACC_PRIVATE_KEY]
     },
-    // Ethereum mainnet
+     Ethereum mainnet
     ethereum: {
       url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [ACC_PRIVATE_KEY]
