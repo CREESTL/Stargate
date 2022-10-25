@@ -249,7 +249,6 @@ contract Bridge is
     /// @return True if tokens were minted successfully
     function mintWithPermit(Assets assetType, BridgeParams calldata params)
         external
-        isSupportedChain(params.targetChain)
         nonReentrant
         returns(bool) 
     {        
@@ -285,7 +284,6 @@ contract Bridge is
     /// @return True if tokens were unlocked successfully
     function unlockWithPermit(Assets assetType, BridgeParams calldata params)
         external
-        isSupportedChain(params.targetChain)
         nonReentrant
         returns(bool) 
     {        
