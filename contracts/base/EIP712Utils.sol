@@ -14,12 +14,14 @@ abstract contract EIP712Utils is IBridge {
     /// @dev Generates the digest that is used in signature verification
     /// @param params BridgeParams structure (see definition in IBridge.sol)
     /// @param verifyPrice used in lock/burn functions to verify token prices, otherwise "false"
+    /// @param chain If not price verification (unlock or mint) we check chain
     function getPermitDigest(
         BridgeParams calldata params,
-        bool verifyPrice
+        bool verifyPrice,
+        string memory chain
     ) public view returns (bytes32) {
         bytes32 domainSeparator = getDomainSeparator("1", block.chainid, address(this));
-        bytes32 typeHash = getPermitTypeHash(params, verifyPrice);
+        bytes32 typeHash = getPermitTypeHash(params, verifyPrice, chain);
 
         bytes32 permitDigest = keccak256(
             abi.encodePacked(
@@ -61,9 +63,11 @@ abstract contract EIP712Utils is IBridge {
     /// @dev Generates the type hash for permit digest
     /// @param params BridgeParams structure (see definition in IBridge.sol)
     /// @param verifyPrice used in lock/burn functions to verify token prices, otherwise "false"
+    /// @param chain If not price verification (unlock or mint) we check chain
     function getPermitTypeHash(
         BridgeParams calldata params,
-        bool verifyPrice
+        bool verifyPrice,
+        string memory chain
     ) internal pure returns (bytes32) {
         bytes32 permitHash;
         if(verifyPrice) {
@@ -82,6 +86,7 @@ abstract contract EIP712Utils is IBridge {
                     params.receiver,
                     params.amount,
                     params.tokenId,
+                    chain,
                     params.nonce
                 )
             );

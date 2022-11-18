@@ -44,6 +44,9 @@ contract Bridge is
     /// @dev Last verified nonce
     uint256 public lastNonce;
 
+    /// @notice The chain bringe was deployed to
+    string public chain; // Shouldn't change after initialization
+
     //========== Fees ==========
 
     uint256 private constant PERCENT_DENOMINATOR = 100_000;
@@ -64,8 +67,8 @@ contract Bridge is
     }
 
     /// @dev Checks the contracts is supported on the given chain
-    modifier isSupportedChain(string memory chain) {
-        require(supportedChains[chain], "Bridge: the chain is not supported!");
+    modifier isSupportedChain(string memory _chain) {
+        require(supportedChains[_chain], "Bridge: the chain is not supported!");
         _;
     }
 
@@ -73,10 +76,12 @@ contract Bridge is
     /// @param _botMessenger The address of bot messenger
     /// @param _stablecoin The address of USD stablecoin
     /// @param _stargateToken The address of stargate token 
+    /// @param _chain The chain bridge was deployed to
     function initialize(
         address _botMessenger,
         address _stablecoin,
-        address _stargateToken
+        address _stargateToken,
+        string memory _chain
     ) public initializer
     {
         require(_botMessenger != address(0), "Bridge: default bot messenger can not be zero address!");
@@ -88,6 +93,7 @@ contract Bridge is
         botMessenger = _botMessenger;
         stablecoin = _stablecoin;
         stargateToken = _stargateToken;
+        chain = _chain;
         _setupRole(BOT_MESSENGER_ROLE, botMessenger);
 
     }
@@ -131,7 +137,7 @@ contract Bridge is
         address sender = msg.sender;
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(params, true);
+        signatureVerification(params, true, "");
         // Calculate the fee and save it
         uint256 feeAmount;
         if(assetType == Assets.Native || assetType == Assets.ERC20){
@@ -197,7 +203,7 @@ contract Bridge is
         address sender = msg.sender;
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(params, true);
+        signatureVerification(params, true, "");
         // Calculate the fee and save it
         uint256 feeAmount;
         if(assetType == Assets.Native || assetType == Assets.ERC20){
@@ -256,7 +262,7 @@ contract Bridge is
         address sender = msg.sender;
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(params, false);
+        signatureVerification(params, false, chain);
 
         mintAsset(
             assetType,
@@ -290,7 +296,7 @@ contract Bridge is
         address sender = msg.sender;
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(params, false);
+        signatureVerification(params, false, chain);
         
         unlockAsset(
             assetType,
@@ -315,15 +321,18 @@ contract Bridge is
     /// @dev Verifies that a signature is valid 
     /// @param params BridgeParams structure (see definition in IBridge.sol)
     /// @param verifyPrice true - if price verification is needed to calculate fee
+    /// @param _chain If not price verification, we check chain
     function signatureVerification(
         BridgeParams calldata params,
-        bool verifyPrice
+        bool verifyPrice,
+        string memory _chain
     ) internal {
             require(!nonces[params.nonce], "Bridge: request already processed!");
 
             bytes32 permitDigest = EIP712Utils.getPermitDigest(
                 params,
-                verifyPrice
+                verifyPrice,
+                _chain
             );
             // Recover the signer of the PERMIT_DIGEST
             address signer = ecrecover(permitDigest, params.v, params.r, params.s);
