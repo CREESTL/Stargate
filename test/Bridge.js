@@ -64,7 +64,8 @@ describe('Bridge', () => {
       [
         botMessenger.address,
         stablecoin.address,
-        stargateToken.address
+        stargateToken.address,
+        "Ala"
       ],
       {initializer:'initialize'}
     );
@@ -291,7 +292,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -322,12 +323,12 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce);
+      params.targetChain = "Goerli"
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
 
-      params.targetChain = "Goerli"
       await expect(bridge.connect(client1).unlockWithPermit(0, params))
         .to.be.revertedWith("Bridge: invalid signature!");
     })
@@ -341,7 +342,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -370,7 +371,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -400,7 +401,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -559,7 +560,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -590,12 +591,12 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce);
+      params.targetChain = "Goerli"
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
 
-      params.targetChain = "Goerli"
       await expect(bridge.connect(client1).unlockWithPermit(1, params))
         .to.be.revertedWith("Bridge: invalid signature!");
     })
@@ -610,7 +611,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -640,7 +641,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -671,7 +672,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -690,7 +691,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -712,12 +713,12 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      params.targetChain = "Goerli"
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
-
-      params.targetChain = "Goerli"
+      
       await expect(bridge.connect(client1).mintWithPermit(1, params))
         .to.be.revertedWith('Bridge: invalid signature!')
     })
@@ -733,7 +734,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -752,7 +753,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1067,7 +1068,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1102,12 +1103,12 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce);
+      params.targetChain = "Goerli"
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
 
-      params.targetChain = "Goerli"
       await expect(bridge.connect(client1).unlockWithPermit(2, params))
         .to.be.revertedWith("Bridge: invalid signature!");
     })
@@ -1126,7 +1127,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain,params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1159,7 +1160,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1194,7 +1195,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1213,7 +1214,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1235,12 +1236,12 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      params.targetChain = "Goerli"
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
-
-      params.targetChain = "Goerli"
+      
       await expect(bridge.connect(client1).mintWithPermit(2, params))
         .to.be.revertedWith("Bridge: invalid signature!")
     })
@@ -1256,7 +1257,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1275,7 +1276,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1597,7 +1598,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1631,12 +1632,12 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce);
+      params.targetChain = "Goerli";
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
 
-      params.targetChain = "Goerli";
       await expect(bridge.connect(client1).unlockWithPermit(3, params))
         .to.be.revertedWith("Bridge: invalid signature!");
     })
@@ -1654,7 +1655,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1686,7 +1687,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1720,7 +1721,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1739,7 +1740,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1761,12 +1762,12 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      params.targetChain = "Goerli"
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
 
-      params.targetChain = "Goerli"
       await expect(bridge.connect(client1).mintWithPermit(3, params))
         .to.be.revertedWith("Bridge: invalid signature!")
     })
@@ -1782,7 +1783,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1801,7 +1802,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2186,7 +2187,8 @@ describe('Bridge', () => {
         [
           addressZero,
           stablecoin.address,
-          stargateToken.address
+          stargateToken.address,
+          "Ala"
         ],
         {initializer:'initialize'}
       )).to.be.revertedWith("Bridge: default bot messenger can not be zero address!");
@@ -2196,7 +2198,8 @@ describe('Bridge', () => {
         [
           botMessenger.address,
           addressZero,
-          stargateToken.address
+          stargateToken.address,
+          "Ala"
         ],
         {initializer:'initialize'}
       )).to.be.revertedWith("Bridge: stablecoin can not be zero address!");
@@ -2206,7 +2209,8 @@ describe('Bridge', () => {
         [
           botMessenger.address,
           stablecoin.address,
-          addressZero
+          addressZero,
+          "Ala"
         ],
         {initializer:'initialize'}
       )).to.be.revertedWith("Bridge: stargate token can not be zero address!");

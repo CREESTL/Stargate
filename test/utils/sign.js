@@ -59,18 +59,19 @@ function getDomainSeparator(version, chainId, verifyingAddress) {
 	);
 }
 
-function getPermitTypeHash(receiver, amount, tokenId, nonce) {
+function getPermitTypeHash(receiver, amount, tokenId, chain, nonce) {
 	return keccak256(
 		defaultAbiCoder.encode(
-			['bytes32', 'string', 'uint256', 'uint256', 'uint256'],
+			['bytes32', 'string', 'uint256', 'uint256', 'string', 'uint256'],
 			[
-			keccak256(toUtf8Bytes(
-        "Permit(address receiver,uint256 amount,uint256 tokenId, uint256 nonce)"
-      )),
-			receiver,
-		  amount,
-      tokenId,
-			nonce,
+				keccak256(toUtf8Bytes(
+					"Permit(address receiver,uint256 amount,uint256 tokenId,string chain,uint256 nonce)"
+				)),
+				receiver,
+				amount,
+				tokenId,
+				chain,
+				nonce,
 			]
 		)
 	);

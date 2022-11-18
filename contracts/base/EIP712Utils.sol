@@ -6,7 +6,7 @@ import "../interfaces/IBridge.sol";
 
 abstract contract EIP712Utils is IBridge {
     bytes32 constant PERMIT_TYPEHASH = keccak256(
-        "Permit(address receiver,uint256 amount,uint256 tokenId, uint256 nonce)"
+        "Permit(address receiver,uint256 amount,uint256 tokenId,string chain,uint256 nonce)"
     );
     bytes32 constant VERIFYPRICE_TYPEHASH = keccak256(
         "VerifyPrice(uint256 stargateAmountForOneUsd,uint256 transferedTokensAmountForOneUsd, uint256 nonce)"
