@@ -64,10 +64,10 @@ Make sure you have _enough RinkebyETH_ tokens for testnet. You can get it for fr
 npx hardhat run scripts/deploy.js --network rinkeby
 ```  
 
-b) __Mumbai__ test network  
+b) __polygonMumbai__ test network  
 Make sure you have _enough MATIC_ tokens for testnet. You can get it for free from [faucet](https://faucet.polygon.technology/). 
 ```
-npx hardhat run scripts/deploy.js --network mumbai
+npx hardhat run scripts/deploy.js --network polygonMumbai
 ```
 
 c) __Chapel__ test network  
@@ -100,7 +100,7 @@ Deployment script takes more than 1.5 minutes to complete. Please, be patient!.
 After the contracts get deployed you can find their _addresses_ and code verification _URLs_ in the `deployOutput.json` file.
 You have to provide these wallets with real/test tokens in order to _call contracts' methods_ from them. 
 
-Please note that all deployed contracts __are verified__ on either [Etherscan](https://etherscan.io/) (testnet [Ethersan](https://rinkeby.etherscan.io/)), [Polygonscan](https://polygonscan.com/) (testnet [Polygonscan](https://mumbai.polygonscan.com/)) or [BscScan](https://polygonscan.com/) (testnet [BscScan](https://testnet.bscscan.com/)).
+Please note that all deployed contracts __are verified__ on either [Etherscan](https://etherscan.io/) (testnet [Ethersan](https://rinkeby.etherscan.io/)), [Polygonscan](https://polygonscan.com/) (testnet [Polygonscan](https://polygonMumbai.polygonscan.com/)) or [BscScan](https://polygonscan.com/) (testnet [BscScan](https://testnet.bscscan.com/)).
 
 <a name="wallets"/>
 

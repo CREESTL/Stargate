@@ -9,14 +9,14 @@
       "verification": "https://goerli.etherscan.io/address/0xE602E06868A991a48c68D30bACa074d1Dc398593#code"
     }
   },
-  "mumbai": {
+  "polygonMumbai": {
     "Bridge": {
       "address": "0x36fC8E6f2CC6C34917908Ad94985079f12DC4f6e",
-      "verification": "https://mumbai.polygonscan.com/address/0x36fC8E6f2CC6C34917908Ad94985079f12DC4f6e#code"
+      "verification": "https://polygonMumbai.polygonscan.com/address/0x36fC8E6f2CC6C34917908Ad94985079f12DC4f6e#code"
     },
     "WrappedTokenFactory": {
       "address": "0x2D65b8a41013148C0d6386E783A587E0ba802fFC",
-      "verification": "https://mumbai.polygonscan.com/address/0x2D65b8a41013148C0d6386E783A587E0ba802fFC#code"
+      "verification": "https://polygonMumbai.polygonscan.com/address/0x2D65b8a41013148C0d6386E783A587E0ba802fFC#code"
     }
   },
   "bscTestnet": {

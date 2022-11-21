@@ -43,8 +43,8 @@ module.exports = {
       url: "https://rpc.ankr.com/bsc",
       accounts: [ACC_PRIVATE_KEY]
     },
-    // Polygon Mumbai testnet
-    mumbai: {
+    // Polygon polygonMumbai testnet
+    polygonMumbai: {
       url:  "https://matic-mumbai.chainstacklabs.com",
       accounts: [ACC_PRIVATE_KEY]
     },
@@ -71,7 +71,7 @@ module.exports = {
     apiKey: {
       bscTestnet: BSCSCAN_API_KEY,
       goerli: ETHERSCAN_API_KEY,
-      mumbai: POLYGONSCAN_API_KEY
+      polygonMumbai: POLYGONSCAN_API_KEY
     }
   },
   skipFiles: ["node_modules"],

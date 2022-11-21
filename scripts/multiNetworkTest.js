@@ -22,7 +22,7 @@ async function main() {
     );
     console.log("Ethereum tokens locked");
     
-    hre.changeNetwork("mumbai");
+    hre.changeNetwork("polygonMumbai");
     
     let [walletMatic] = await ethers.getSigners();
     const bridgeMatic = await ethers.getContractAt("Bridge", BRIDGE_MATIC);

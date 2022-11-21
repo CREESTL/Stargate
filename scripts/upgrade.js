@@ -59,8 +59,8 @@ async function main() {
   // OUTPUT_DEPLOY[network.name][contractName].address = bridge.address;
   // if (network.name === "polygon") {
   //   url = "https://polygonscan.com/address/" + bridge.address + "#code";
-  // } else if (network.name === "mumbai") {
-  //   url = "https://mumbai.polygonscan.com/address/" + bridge.address + "#code";
+  // } else if (network.name === "polygonMumbai") {
+  //   url = "https://polygonMumbai.polygonscan.com/address/" + bridge.address + "#code";
   // } else if (network.name === "ethereum") {
   //   url = "https://etherscan.io/address/" + bridge.address + "#code";
   // } else if (network.name === "goerli") {
