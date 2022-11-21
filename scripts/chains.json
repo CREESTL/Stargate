@@ -1,0 +1,5 @@
+{
+    "bscTestnet": "BinanceSmartChainTestnet",
+    "mumbai": "PolygonTestnet",
+    "goerli": "EthereumTestnetGoerli"
+}

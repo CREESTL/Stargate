@@ -19,7 +19,7 @@
       "verification": "https://mumbai.polygonscan.com/address/0x2D65b8a41013148C0d6386E783A587E0ba802fFC#code"
     }
   },
-  "bsc_testnet": {
+  "bscTestnet": {
     "Bridge": {
       "address": "0x660A183D371AA65830A5D71c66282Afb05aD0F9d",
       "verification": "https://testnet.bscscan.com/address/0x660A183D371AA65830A5D71c66282Afb05aD0F9d#code"

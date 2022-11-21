@@ -34,7 +34,7 @@ module.exports = {
       url: "http://127.0.0.1:8545",
     },
     // BSC testnet
-    bsc_testnet: {
+    bscTestnet: {
       url: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
       accounts: [ACC_PRIVATE_KEY]
     },
@@ -53,7 +53,7 @@ module.exports = {
       url: "https://rpc-mainnet.maticvigil.com",
       accounts: [ACC_PRIVATE_KEY]
     },
-    // Ethereum Rinkeby testnet
+    // Ethereum Goerli testnet
     goerli: {
       url: 'https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
       accounts: [ACC_PRIVATE_KEY]
@@ -69,9 +69,9 @@ module.exports = {
   },
   etherscan: {
     apiKey: {
-      bsc: BSCSCAN_API_KEY,
-      ethereum: ETHERSCAN_API_KEY,
-      polygon: POLYGONSCAN_API_KEY
+      bscTestnet: BSCSCAN_API_KEY,
+      goerli: ETHERSCAN_API_KEY,
+      mumbai: POLYGONSCAN_API_KEY
     }
   },
   skipFiles: ["node_modules"],
