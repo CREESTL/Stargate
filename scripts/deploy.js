@@ -59,7 +59,7 @@ async function main() {
     url = "https://goerli.etherscan.io/address/" + bridge.address + "#code";
   } else if (network.name === "bsc") {
     url = "https://bscscan.com/address/" + bridge.address + "#code";
-  } else if (network.name === "bsc_testnet") {
+  } else if (network.name === "bscTestnet") {
     url = "https://testnet.bscscan.com/address/" + bridge.address + "#code";
   }
   OUTPUT_DEPLOY[network.name][contractName].verification = url;
@@ -117,7 +117,7 @@ async function main() {
     url = "https://goerli.etherscan.io/address/" + factory.address + "#code";
   } else if (network.name === "bsc") {
     url = "https://bscscan.com/address/" + factory.address + "#code";
-  } else if (network.name === "bsc_testnet") {
+  } else if (network.name === "bscTestnet") {
     url = "https://testnet.bscscan.com/address/" + factory.address + "#code";
   }
 
