@@ -15,8 +15,6 @@ import "./interfaces/IWrappedERC1155.sol";
 
 import "./base/EIP712Utils.sol";
 
-import "hardhat/console.sol";
-
 /// @title A bridge contract
 contract Bridge is
     EIP712Utils,
