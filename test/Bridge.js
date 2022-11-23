@@ -24,6 +24,7 @@ describe('Bridge', () => {
   let tokenERC1155;
 	let bridge;
 	const addressZero = "0x0000000000000000000000000000000000000000";
+  const addressDead = "0x000000000000000000000000000000000000dEaD"
 
   // Default Chain ID for Hardhat local network
   const chainId = 31337;
@@ -193,6 +194,27 @@ describe('Bridge', () => {
       expect(nativeBalanceAfterAfter).to.be.within(expectedNativeBalance.sub(EPSILON), expectedNativeBalance.add(EPSILON));
     });
 
+    it("Should fail to lock native tokens if token was changed", async() => {
+      let amount = ethers.utils.parseEther('1');
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      
+      params = Object.assign(params, signature);     
+  		
+      params.token = addressDead
+
+      // Transfer ether to the bridge and lock it there, pay fees with ST
+      await expect(bridge.connect(client1).lockWithPermit(0, params, {value: amount}))
+        .to.be.revertedWith("Bridge: invalid signature!")
+    })
+
   	it('Should fail to lock native tokens if amount sent not equal amount in params', async() => {
   		let amount = ethers.utils.parseEther('1');
       let params = getParams();
@@ -303,6 +325,35 @@ describe('Bridge', () => {
       let expectedBalance = nativeBalanceBefore.add(params.amount);
       expect(nativeBalanceAfter).to.be.within(expectedBalance.sub(EPSILON), expectedBalance.add(EPSILON));
     });
+
+    it("Should fail to unlock native tokent if token address changed", async() => {
+      let amount = ethers.utils.parseEther('1');
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);     
+      //Lock some tokens
+      await bridge.connect(client1).lockWithPermit(0, params, {value: amount})
+
+      params.nonce +=1;
+      params.amount = amount.div("2");
+
+      domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      permitDigest = getPermitDigest(domainSeparator, typeHash);
+      signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);
+
+      params.token = addressDead;
+      await expect(bridge.connect(client1).unlockWithPermit(0, params))
+        .to.be.revertedWith("Bridge: invalid signature!");
+    })
 
     it('Should fail to unlock native tokens if target chain differs', async () => {
       let amount = ethers.utils.parseEther('1');
@@ -476,6 +527,26 @@ describe('Bridge', () => {
       expect(TTBalanceAfterAfter).to.be.equal(TTBalanceAfter.sub(amount).sub(fee));
     });
 
+    it("Should fail to lock ERC20 tokens if token changed", async() => {
+      let amount = ethers.utils.parseEther('1');
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = transferToken.address;
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      
+      params = Object.assign(params, signature);     
+  		params.token = addressDead;
+      // Transfer tokens to the bridge and lock it there, pay fees with ST
+      await expect(bridge.connect(client1).lockWithPermit(1, params))
+        .to.be.revertedWith("Bridge: invalid signature!")
+    })
+
   	it('Should fail to lock ERC20 tokens if not enough tokens were sent to pay fees', async() => {
   		let amount = ethers.utils.parseEther('1');
       let params = getParams();
@@ -570,6 +641,36 @@ describe('Bridge', () => {
       let TTBalanceAfter = await transferToken.balanceOf(client1.address);
       expect(TTBalanceAfter).to.be.equal(TTBalanceBefore.add(params.amount));
     });
+
+    it("Should fail to unlock ERC20 tokens if token address changed", async() => {
+      let amount = ethers.utils.parseEther('1');
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = transferToken.address;
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);     
+      //Lock some tokens
+      await bridge.connect(client1).lockWithPermit(1, params)
+
+      params.nonce +=1;
+      params.amount = amount.div("2");
+
+      domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      permitDigest = getPermitDigest(domainSeparator, typeHash);
+      signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);     
+
+      params.token = addressDead;
+      await expect(bridge.connect(client1).unlockWithPermit(1, params))
+        .to.be.revertedWith("Bridge: invalid signature!");
+    })
 
     it('Should fail to unlock ERC20 tokens if target chain differs', async () => {
       let amount = ethers.utils.parseEther('1');
@@ -704,6 +805,25 @@ describe('Bridge', () => {
       expect(wrappedBalance).to.be.equal(params.amount);
     });
 
+    it("Should fail to mint ERC20 tokens if token address changed", async() => {
+      let amount = ethers.utils.parseEther('1');
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC20.address;
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);     
+
+      params.token = addressDead
+      await expect(bridge.connect(client1)
+          .mintWithPermit(1, params)).to.revertedWith("Bridge: invalid signature!")
+    })
+
     it("Should fail to mint ERC20 tokens if target chain differs", async () => {
       let amount = ethers.utils.parseEther('1');
       let params = getParams();
@@ -822,6 +942,25 @@ describe('Bridge', () => {
       expect(TTBalanceAfterAfter).to.be.equal(TTBalanceAfter.sub(amount).sub(fee));
     });
 
+    it("Should fail to burn ERC20 tokens if token address changed", async() => {
+      let amount = ethers.utils.parseEther('1');
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = transferToken.address;
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      
+      params = Object.assign(params, signature);     
+      params.token = addressDead
+      // Burn tokens, pay fees with ST
+      await expect(bridge.connect(client1).burnWithPermit(1, params))
+        .to.be.revertedWith("Bridge: invalid signature!")
+    })
   	it('Should fail to burn ERC20 tokens if user does not have enough tokens', async() => {
 
   		let amount = ethers.utils.parseEther('1');
@@ -977,6 +1116,30 @@ describe('Bridge', () => {
       expect(USDBalanceAfter).to.be.equal(USDBalanceBefore.sub(fee))
     });
 
+    it("Should fail to lock ERC721 tokens if token address changed", async() => {
+      let amount = 1;
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC721.address;
+
+      await tokenERC721.mint(client1.address, 0);
+      await tokenERC721.mint(client1.address, 1);
+      await tokenERC721.connect(client1).setApprovalForAll(bridge.address, true);
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      
+      params = Object.assign(params, signature);     
+  		params.token = addressDead
+      // Transfer tokens to the bridge and lock it there, pay fees with ST
+      await expect(bridge.connect(client1).lockWithPermit(2, params))
+        .to.be.revertedWith("Bridge: invalid signature!")
+    })
+
   	it('Should fail to lock ERC721 tokens if not enough tokens were sent to pay fees', async() => {
   		let amount = 1;
       let params = getParams();
@@ -1079,6 +1242,39 @@ describe('Bridge', () => {
       ERC721Balance = await tokenERC721.balanceOf(client1.address);
       expect(ERC721Balance).to.be.equal(2);
     });
+
+    it("Should fail to unlock ERC721 tokens if token address changed", async() => {
+      let amount = 1;
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC721.address;
+
+      await tokenERC721.mint(client1.address, 0);
+      await tokenERC721.mint(client1.address, 1);
+      await tokenERC721.connect(client1).setApprovalForAll(bridge.address, true);
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);     
+      //Lock some tokens
+      await bridge.connect(client1).lockWithPermit(2, params);
+
+      params.nonce +=1;
+
+      domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      permitDigest = getPermitDigest(domainSeparator, typeHash);
+      signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);     
+
+      params.token = addressDead
+      await expect(bridge.connect(client1).unlockWithPermit(2, params))
+        .to.be.revertedWith("Bridge: invalid signature!");
+    })
 
     it('Should fail to unlock ERC721 tokens if targer chain differs', async () => {
       let amount = 1;
@@ -1220,12 +1416,31 @@ describe('Bridge', () => {
       params = Object.assign(params, signature);     
 
       await expect(bridge.connect(client1)
-          .mintWithPermit(2, params)).to.emit(bridge, "Mint")
-              .withArgs(2, anyValue, client1.address, amount, anyValue, anyValue, "Ala");
+        .mintWithPermit(2, params)).to.emit(bridge, "Mint")
+          .withArgs(2, anyValue, client1.address, amount, anyValue, anyValue, "Ala");
       
       let ERC721Balance = await tokenERC721.balanceOf(client1.address);
       expect(ERC721Balance).to.be.equal(1);
     });
+
+    it("Should fail to mint ERC721 tokens if token address changed", async() => {
+      let amount = 1;
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC721.address;
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);
+
+      params.token = addressDead
+      await expect(bridge.connect(client1)
+        .mintWithPermit(2, params)).to.revertedWith("Bridge: invalid signature!")
+    })
 
     it("Should fail to mint ERC721 tokens if target chain differs", async () => {
       let amount = 1;
@@ -1347,6 +1562,29 @@ describe('Bridge', () => {
       expect(USDBalanceAfter).to.be.equal(USDBalanceBefore.sub(fee));
     });
 
+    it("Should fail to burn ERC721 tokens if token address changed", async() => {
+      let amount = 1;
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC721.address;
+
+      await tokenERC721.mint(client1.address, 0);
+      await tokenERC721.mint(client1.address, 1);
+      await tokenERC721.connect(client1).setApprovalForAll(bridge.address, true);
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      
+      params = Object.assign(params, signature);     
+  		params.token = addressDead
+      // Burn tokens, pay fees with ST
+      await expect(bridge.connect(client1).burnWithPermit(2, params))
+      .to.be.revertedWith("Bridge: invalid signature!")
+    })
   	it('Should fail to burn ERC721 tokens if user does not have enough tokens', async() => {
 
   		let amount = 1;
@@ -1509,6 +1747,29 @@ describe('Bridge', () => {
       expect(USDBalanceAfter).to.be.equal(USDBalanceBefore.sub(fee))
     });
 
+    it("Should fail to lock ERC1155 tokens if token address changed", async() => {
+      let amount = 5;
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC1155.address;
+
+      await tokenERC1155.mint(client1.address, 0, 10);
+      await tokenERC1155.connect(client1).setApprovalForAll(bridge.address, true);
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      
+      params = Object.assign(params, signature);
+      params.token = addressDead
+      // Transfer tokens to the bridge and lock it there, pay fees with ST
+      await expect(bridge.connect(client1).lockWithPermit(3, params))
+        .to.be.revertedWith("Bridge: invalid signature!")
+    })
+
   	it('Should fail to lock ERC1155 tokens if not enough tokens were sent to pay fees', async() => {
       let amount = 5;
       let params = getParams();
@@ -1609,6 +1870,38 @@ describe('Bridge', () => {
       ERC1155Balance = await tokenERC1155.balanceOf(client1.address, 0);
       expect(ERC1155Balance).to.be.equal(10);
     });
+
+    it("Should fail to unlock ERC1155 tokens if token address changed", async() => {
+      let amount = 5;
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC1155.address;
+
+      await tokenERC1155.mint(client1.address, 0, 10);
+      await tokenERC1155.connect(client1).setApprovalForAll(bridge.address, true);
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);     
+      //Lock some tokens
+      await bridge.connect(client1).lockWithPermit(3, params);
+
+      params.nonce +=1;
+
+      domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      permitDigest = getPermitDigest(domainSeparator, typeHash);
+      signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);     
+
+      params.token = addressDead
+      await expect(bridge.connect(client1).unlockWithPermit(3, params))
+        .to.be.revertedWith("Bridge: invalid signature!");
+    })
 
     it('Should fail to unlock ERC1155 tokens if target chain differs', async () => {
       let amount = 5;
@@ -1746,12 +2039,31 @@ describe('Bridge', () => {
       params = Object.assign(params, signature);     
 
       await expect(bridge.connect(client1)
-          .mintWithPermit(3, params)).to.emit(bridge, "Mint")
-              .withArgs(3, anyValue, client1.address, amount, anyValue, anyValue, "Ala");
+        .mintWithPermit(3, params)).to.emit(bridge, "Mint")
+          .withArgs(3, anyValue, client1.address, amount, anyValue, anyValue, "Ala");
       
       let ERC1155Balance = await tokenERC1155.balanceOf(client1.address, 0);
       expect(ERC1155Balance).to.be.equal(params.amount);
     });
+
+    it("Should fail to mint ERC1155 tokens if token address changed", async() => {
+      let amount = 5;
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC1155.address;
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      params = Object.assign(params, signature);
+      
+      params.token = addressDead;
+      await expect(bridge.connect(client1)
+        .mintWithPermit(3, params)).to.revertedWith("Bridge: invalid signature!");
+    })
 
     it('Should fail to mint ERC1155 tokens if target chain differs', async () => {
       let amount = 5;
@@ -1872,6 +2184,29 @@ describe('Bridge', () => {
       let USDBalanceAfter = await stablecoin.balanceOf(client1.address);
       expect(USDBalanceAfter).to.be.equal(USDBalanceBefore.sub(fee));
     });
+
+    it("Should fail to burn ERC1155 tokens if token address changed", async() => {
+      let amount = 5;
+      let params = getParams();
+      params.amount = amount;
+      params.receiver = client1.address;
+      params.token = tokenERC1155.address;
+
+      await tokenERC1155.mint(client1.address, 0, 10);
+      await tokenERC1155.connect(client1).setApprovalForAll(bridge.address, true);
+
+  		await bridge.setSupportedChain("Ala");
+      let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let permitDigest = getPermitDigest(domainSeparator, typeHash);
+      let signature = getSignatureFromDigest(permitDigest, botMessenger);
+      
+      params = Object.assign(params, signature);
+      params.token = addressDead
+      // Burn tokens, pay fees with ST
+      await expect(bridge.connect(client1).burnWithPermit(3, params))
+        .to.be.revertedWith("Bridge: invalid signature!")
+    })
 
   	it('Should fail to burn ERC1155 tokens if user does not have enough tokens', async() => {
       let amount = 5;
