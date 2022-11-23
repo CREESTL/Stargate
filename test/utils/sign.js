@@ -59,16 +59,17 @@ function getDomainSeparator(version, chainId, verifyingAddress) {
 	);
 }
 
-function getPermitTypeHash(receiver, amount, tokenId, chain, nonce) {
+function getPermitTypeHash(receiver, amount, token, tokenId, chain, nonce) {
 	return keccak256(
 		defaultAbiCoder.encode(
-			['bytes32', 'string', 'uint256', 'uint256', 'string', 'uint256'],
+			['bytes32', 'address', 'uint256', 'address', 'uint256', 'string', 'uint256'],
 			[
 				keccak256(toUtf8Bytes(
-					"Permit(address receiver,uint256 amount,uint256 tokenId,string chain,uint256 nonce)"
+					"Permit(address receiver,uint256 amount,address token,uint256 tokenId,string chain,uint256 nonce)"
 				)),
 				receiver,
 				amount,
+				token,
 				tokenId,
 				chain,
 				nonce,
@@ -77,16 +78,17 @@ function getPermitTypeHash(receiver, amount, tokenId, chain, nonce) {
 	);
 }
 
-function getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokenAmountForOneUsd, nonce) {
+function getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, token, nonce) {
 	return keccak256(
 		defaultAbiCoder.encode(
-			['bytes32', 'uint256', 'uint256', 'uint256'],
+			['bytes32', 'uint256', 'uint256', 'address', 'uint256'],
 			[
 			keccak256(toUtf8Bytes(
-        "VerifyPrice(uint256 stargateAmountForOneUsd,uint256 transferedTokensAmountForOneUsd, uint256 nonce)"
+        "VerifyPrice(uint256 stargateAmountForOneUsd,uint256 transferedTokensAmountForOneUsd,address token,uint256 nonce)"
       )),
 			stargateAmountForOneUsd,
 			transferedTokensAmountForOneUsd,
+			token,
       nonce
 			]
 		)

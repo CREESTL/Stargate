@@ -6,10 +6,10 @@ import "../interfaces/IBridge.sol";
 
 abstract contract EIP712Utils is IBridge {
     bytes32 constant PERMIT_TYPEHASH = keccak256(
-        "Permit(address receiver,uint256 amount,uint256 tokenId,string chain,uint256 nonce)"
+        "Permit(address receiver,uint256 amount,address token,uint256 tokenId,string chain,uint256 nonce)"
     );
     bytes32 constant VERIFYPRICE_TYPEHASH = keccak256(
-        "VerifyPrice(uint256 stargateAmountForOneUsd,uint256 transferedTokensAmountForOneUsd, uint256 nonce)"
+        "VerifyPrice(uint256 stargateAmountForOneUsd,uint256 transferedTokensAmountForOneUsd,address token,uint256 nonce)"
     );
     /// @dev Generates the digest that is used in signature verification
     /// @param params BridgeParams structure (see definition in IBridge.sol)
@@ -76,6 +76,7 @@ abstract contract EIP712Utils is IBridge {
                     VERIFYPRICE_TYPEHASH,
                     params.stargateAmountForOneUsd,
                     params.transferedTokensAmountForOneUsd,
+                    params.token,
                     params.nonce
                 )
             );
@@ -85,13 +86,13 @@ abstract contract EIP712Utils is IBridge {
                     PERMIT_TYPEHASH,
                     params.receiver,
                     params.amount,
+                    params.token,
                     params.tokenId,
                     chain,
                     params.nonce
                 )
             );
         }
-
         return permitHash;
     }
 }

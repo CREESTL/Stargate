@@ -139,7 +139,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -169,7 +169,7 @@ describe('Bridge', () => {
       params.payFeesWithST = false;
       // Prepare new digest
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
 
@@ -202,7 +202,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -223,7 +223,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -240,7 +240,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -265,7 +265,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -285,7 +285,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong price
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -303,7 +303,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -314,7 +314,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -334,7 +334,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -345,7 +345,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -363,7 +363,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -375,7 +375,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       params.targetChain = "Goerli"
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -393,7 +393,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -411,7 +411,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -422,7 +422,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -441,7 +441,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -452,7 +452,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -476,7 +476,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -505,7 +505,7 @@ describe('Bridge', () => {
       params.payFeesWithST = false;
       // Prepare new digest
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
 
@@ -536,7 +536,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -556,7 +556,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -580,7 +580,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -601,7 +601,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong price
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -620,7 +620,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -631,7 +631,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -651,7 +651,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -662,7 +662,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -681,7 +681,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -693,7 +693,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       params.targetChain = "Goerli"
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -712,7 +712,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -731,7 +731,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -742,7 +742,7 @@ describe('Bridge', () => {
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -762,7 +762,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -773,7 +773,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -792,7 +792,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -814,7 +814,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -834,7 +834,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       params.targetChain = "Goerli"
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -854,7 +854,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -873,7 +873,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -895,7 +895,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -922,7 +922,7 @@ describe('Bridge', () => {
       params.payFeesWithST = false;
       // Prepare new digest
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
 
@@ -951,7 +951,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -972,7 +972,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -990,7 +990,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1016,7 +1016,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong price
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1035,7 +1035,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1065,7 +1065,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -1093,7 +1093,7 @@ describe('Bridge', () => {
       params.payFeesWithST = false;
       // Prepare new digest
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
 
@@ -1129,7 +1129,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -1149,7 +1149,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1177,7 +1177,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1198,7 +1198,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong price
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1221,7 +1221,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1231,7 +1231,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1256,7 +1256,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1266,7 +1266,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1289,7 +1289,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1300,7 +1300,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       params.targetChain = "Goerli"
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1323,7 +1323,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain,params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain,params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1346,7 +1346,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1356,7 +1356,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1380,7 +1380,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1391,7 +1391,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1410,7 +1410,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1432,7 +1432,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -1452,7 +1452,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       params.targetChain = "Goerli"
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1472,7 +1472,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1491,7 +1491,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1516,7 +1516,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -1543,7 +1543,7 @@ describe('Bridge', () => {
       params.payFeesWithST = false;
       // Prepare new digest
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
 
@@ -1575,7 +1575,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -1598,7 +1598,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1620,7 +1620,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1646,7 +1646,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong price
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1668,7 +1668,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1697,7 +1697,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -1724,7 +1724,7 @@ describe('Bridge', () => {
       params.payFeesWithST = false;
       // Prepare new digest
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
 
@@ -1759,7 +1759,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -1779,7 +1779,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1806,7 +1806,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1827,7 +1827,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong price
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1849,7 +1849,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1859,7 +1859,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1883,7 +1883,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1893,7 +1893,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1915,7 +1915,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1926,7 +1926,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       params.targetChain = "Goerli";
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1948,7 +1948,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1970,7 +1970,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1980,7 +1980,7 @@ describe('Bridge', () => {
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2003,7 +2003,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2014,7 +2014,7 @@ describe('Bridge', () => {
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2033,7 +2033,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2055,7 +2055,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -2075,7 +2075,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       params.targetChain = "Goerli"
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2095,7 +2095,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2114,7 +2114,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2140,7 +2140,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -2166,7 +2166,7 @@ describe('Bridge', () => {
       params.payFeesWithST = false;
       // Prepare new digest
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
 
@@ -2197,7 +2197,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -2219,7 +2219,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2240,7 +2240,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2268,7 +2268,7 @@ describe('Bridge', () => {
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong price
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd.div("2"), transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2289,7 +2289,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2425,7 +2425,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
@@ -2447,7 +2447,7 @@ describe('Bridge', () => {
       params.payFeesWithST = false;
       // Prepare new digest
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
 
@@ -2487,7 +2487,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.nonce)
+      let typeHash = getVerifyPriceTypeHash(stargateAmountForOneUsd, transferedTokensAmountForOneUsd, params.token, params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       
