@@ -10,8 +10,8 @@
     }
   ],
   "impls": {
-    "83edcd2c69af964d6ec93847e38bf0b125305a2593dd4405d826f60c0d95b248": {
-      "address": "0x3B6B16B7AF197AB96153678f6181DE7d4Ac8e37c",
+    "c13c43be4961959949d5c5c414924c96915b769cd26edeb6ef03ac55a3d799c3": {
+      "address": "0xeDe164953FF12C70DE188eFD888445Be3d219561",
       "layout": {
         "solcVersion": "0.8.9",
         "storage": [
@@ -86,7 +86,7 @@
             "slot": "201",
             "type": "t_array(t_uint256)100_storage",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:31"
+            "src": "contracts/Bridge.sol:29"
           },
           {
             "label": "supportedChains",
@@ -94,7 +94,7 @@
             "slot": "301",
             "type": "t_mapping(t_string_memory_ptr,t_bool)",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:33"
+            "src": "contracts/Bridge.sol:31"
           },
           {
             "label": "tokenFees",
@@ -102,7 +102,7 @@
             "slot": "302",
             "type": "t_mapping(t_address,t_uint256)",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:36"
+            "src": "contracts/Bridge.sol:34"
           },
           {
             "label": "nonces",
@@ -110,7 +110,7 @@
             "slot": "303",
             "type": "t_mapping(t_uint256,t_bool)",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:38"
+            "src": "contracts/Bridge.sol:36"
           },
           {
             "label": "botMessenger",
@@ -118,7 +118,7 @@
             "slot": "304",
             "type": "t_address",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:41"
+            "src": "contracts/Bridge.sol:39"
           },
           {
             "label": "stablecoin",
@@ -126,7 +126,7 @@
             "slot": "305",
             "type": "t_address",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:42"
+            "src": "contracts/Bridge.sol:40"
           },
           {
             "label": "stargateToken",
@@ -134,7 +134,7 @@
             "slot": "306",
             "type": "t_address",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:43"
+            "src": "contracts/Bridge.sol:41"
           },
           {
             "label": "lastNonce",
@@ -142,7 +142,15 @@
             "slot": "307",
             "type": "t_uint256",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:45"
+            "src": "contracts/Bridge.sol:43"
+          },
+          {
+            "label": "chain",
+            "offset": 0,
+            "slot": "308",
+            "type": "t_string_storage",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:46"
           }
         ],
         "types": {
@@ -194,6 +202,10 @@
             "label": "string",
             "numberOfBytes": "32"
           },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
           "t_struct(RoleData)34_storage": {
             "label": "struct AccessControlUpgradeable.RoleData",
             "members": [
@@ -219,16 +231,13 @@
           "t_uint8": {
             "label": "uint8",
             "numberOfBytes": "1"
-          },
-          "t_string_storage": {
-            "label": "string"
           }
         }
       }
     },
-    "50a8049a60d21df2f703b48fd834a8d26517ab7c1e1217c8bb06f1d10896cb3a": {
-      "address": "0x254AaC865408B57e8f0a6Bba9796590E060B452f",
-      "txHash": "0xdbf27821f7b251ed799839ac33b863fd4b3846d41b50674fa05344848ea5135c",
+    "d295369c5a807dc3a47130f5d83d588d3e2ef314e0ce56864cac2102ec32d473": {
+      "address": "0xAB2dFB804136DC8FD235e52f5632f127E24C6f31",
+      "txHash": "0xe7ff64677f0052af26516883f475eed8cb3f4a2ec36c6c34a81a08d96ee29f17",
       "layout": {
         "solcVersion": "0.8.9",
         "storage": [
@@ -303,7 +312,7 @@
             "slot": "201",
             "type": "t_array(t_uint256)100_storage",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:31"
+            "src": "contracts/Bridge.sol:29"
           },
           {
             "label": "supportedChains",
@@ -311,7 +320,7 @@
             "slot": "301",
             "type": "t_mapping(t_string_memory_ptr,t_bool)",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:33"
+            "src": "contracts/Bridge.sol:31"
           },
           {
             "label": "tokenFees",
@@ -319,7 +328,7 @@
             "slot": "302",
             "type": "t_mapping(t_address,t_uint256)",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:36"
+            "src": "contracts/Bridge.sol:34"
           },
           {
             "label": "nonces",
@@ -327,7 +336,7 @@
             "slot": "303",
             "type": "t_mapping(t_uint256,t_bool)",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:38"
+            "src": "contracts/Bridge.sol:36"
           },
           {
             "label": "botMessenger",
@@ -335,7 +344,7 @@
             "slot": "304",
             "type": "t_address",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:41"
+            "src": "contracts/Bridge.sol:39"
           },
           {
             "label": "stablecoin",
@@ -343,7 +352,7 @@
             "slot": "305",
             "type": "t_address",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:42"
+            "src": "contracts/Bridge.sol:40"
           },
           {
             "label": "stargateToken",
@@ -351,7 +360,7 @@
             "slot": "306",
             "type": "t_address",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:43"
+            "src": "contracts/Bridge.sol:41"
           },
           {
             "label": "lastNonce",
@@ -359,7 +368,7 @@
             "slot": "307",
             "type": "t_uint256",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:45"
+            "src": "contracts/Bridge.sol:43"
           },
           {
             "label": "chain",
@@ -367,7 +376,233 @@
             "slot": "308",
             "type": "t_string_storage",
             "contract": "Bridge",
-            "src": "contracts/Bridge.sol:48"
+            "src": "contracts/Bridge.sol:46"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)100_storage": {
+            "label": "uint256[100]",
+            "numberOfBytes": "3200"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)34_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_string_memory_ptr,t_bool)": {
+            "label": "mapping(string => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_string_memory_ptr": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(RoleData)34_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "9c708541a7443638784150c393e9b79baa181b867b20b37dffc4868934bed8b9": {
+      "address": "0x5479773D99B646590881B96A41c0535cecA0C17E",
+      "txHash": "0x675823e7ba9d1b72cc4dbd2596cb2a85bddef2bc92da82c594aa120fb428ecea",
+      "layout": {
+        "solcVersion": "0.8.9",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC165Upgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol:41"
+          },
+          {
+            "label": "_roles",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)34_storage)",
+            "contract": "AccessControlUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:61"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "AccessControlUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:259"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:80"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_array(t_uint256)100_storage",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:29"
+          },
+          {
+            "label": "supportedChains",
+            "offset": 0,
+            "slot": "301",
+            "type": "t_mapping(t_string_memory_ptr,t_bool)",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:31"
+          },
+          {
+            "label": "tokenFees",
+            "offset": 0,
+            "slot": "302",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:34"
+          },
+          {
+            "label": "nonces",
+            "offset": 0,
+            "slot": "303",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:36"
+          },
+          {
+            "label": "botMessenger",
+            "offset": 0,
+            "slot": "304",
+            "type": "t_address",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:39"
+          },
+          {
+            "label": "stablecoin",
+            "offset": 0,
+            "slot": "305",
+            "type": "t_address",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:40"
+          },
+          {
+            "label": "stargateToken",
+            "offset": 0,
+            "slot": "306",
+            "type": "t_address",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:41"
+          },
+          {
+            "label": "lastNonce",
+            "offset": 0,
+            "slot": "307",
+            "type": "t_uint256",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:43"
+          },
+          {
+            "label": "chain",
+            "offset": 0,
+            "slot": "308",
+            "type": "t_string_storage",
+            "contract": "Bridge",
+            "src": "contracts/Bridge.sol:46"
           }
         ],
         "types": {

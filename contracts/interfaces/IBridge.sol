@@ -33,7 +33,7 @@ interface IBridge {
         uint256 amount;
         address token;
         uint256 tokenId;
-        address receiver;
+        string receiver;
         string targetChain;
         uint256 stargateAmountForOneUsd;
         uint256 transferedTokensAmountForOneUsd;
@@ -91,7 +91,7 @@ interface IBridge {
     event Lock(
         Assets assetType,
         address indexed sender,
-        address receiver,
+        string receiver,
         uint256 amount,
         address indexed token,
         uint256 indexed tokenId,
@@ -108,7 +108,7 @@ interface IBridge {
     event Burn(
         Assets assetType,
         address indexed sender,
-        address receiver,
+        string receiver,
         uint256 amount,
         address indexed token,
         uint256 indexed tokenId,
@@ -125,7 +125,7 @@ interface IBridge {
     event Mint(
         Assets assetType,
         address indexed sender,
-        address receiver,
+        string receiver,
         uint256 amount,
         address indexed token,
         uint256 indexed tokenId,
@@ -142,7 +142,7 @@ interface IBridge {
     event Unlock(
         Assets assetType,
         address indexed sender,
-        address receiver,
+        string receiver,
         uint256 amount,
         address indexed token,
         uint256 indexed tokenId,
