@@ -120,9 +120,9 @@ contract Bridge is
 
     /// @notice Locks tokens if the user is permitted to lock
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
-    /// @param params BridgeParams structure (see definition in IBridge.sol)
+    /// @param params sourceBridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were locked successfully
-    function lockWithPermit(Assets assetType, BridgeParams calldata params)
+    function lockWithPermit(Assets assetType, sourceBridgeParams calldata params)
         external
         payable
         isSupportedChain(params.targetChain)
@@ -135,7 +135,8 @@ contract Bridge is
         address sender = msg.sender;
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(params, true, "");
+        bytes32 typeHash = EIP712Utils.getVerifyPriceTypeHash(params);
+        signatureVerification(typeHash, params.nonce, params.v, params.r, params.s);
         // Calculate the fee and save it
         uint256 feeAmount;
         if(assetType == Assets.Native || assetType == Assets.ERC20){
@@ -189,9 +190,9 @@ contract Bridge is
 
     /// @notice Burn tokens if the user is permitted to burn
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
-    /// @param params BridgeParams structure (see definition in IBridge.sol)
+    /// @param params sourceBridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were burned successfully
-    function burnWithPermit(Assets assetType, BridgeParams calldata params)
+    function burnWithPermit(Assets assetType, sourceBridgeParams calldata params)
         external
         isSupportedChain(params.targetChain)
         nonReentrant
@@ -201,7 +202,8 @@ contract Bridge is
         address sender = msg.sender;
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(params, true, "");
+        bytes32 typeHash = EIP712Utils.getVerifyPriceTypeHash(params);
+        signatureVerification(typeHash, params.nonce, params.v, params.r, params.s);
         // Calculate the fee and save it
         uint256 feeAmount;
         if(assetType == Assets.Native || assetType == Assets.ERC20){
@@ -249,9 +251,9 @@ contract Bridge is
 
     /// @notice Mint tokens if the user is permitted to mint
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
-    /// @param params BridgeParams structure (see definition in IBridge.sol)
+    /// @param params targetBridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were minted successfully
-    function mintWithPermit(Assets assetType, BridgeParams calldata params)
+    function mintWithPermit(Assets assetType, targetBridgeParams calldata params)
         external
         nonReentrant
         returns(bool) 
@@ -260,7 +262,8 @@ contract Bridge is
         address sender = msg.sender;
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(params, false, chain);
+        bytes32 typeHash = EIP712Utils.getPermitTypeHash(sender, params, chain);
+        signatureVerification(typeHash, params.nonce, params.v, params.r, params.s);
 
         mintAsset(
             assetType,
@@ -273,20 +276,20 @@ contract Bridge is
         emit Mint(
             assetType,
             sender,
-            params.receiver,
+            sender,
             params.amount,
             params.token,
             params.tokenId,
-            params.targetChain
+            chain
         );
         return true;
     }
 
     /// @notice Unlocks tokens if the user is permitted to unlock
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
-    /// @param params BridgeParams structure (see definition in IBridge.sol)
+    /// @param params targetBridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were unlocked successfully
-    function unlockWithPermit(Assets assetType, BridgeParams calldata params)
+    function unlockWithPermit(Assets assetType, targetBridgeParams calldata params)
         external
         nonReentrant
         returns(bool) 
@@ -294,7 +297,8 @@ contract Bridge is
         address sender = msg.sender;
         // Verify the signature (contains v, r, s) using the domain separator
         // This will prove that the user has burnt tokens on the target chain
-        signatureVerification(params, false, chain);
+        bytes32 typeHash = EIP712Utils.getPermitTypeHash(sender, params, chain);
+        signatureVerification(typeHash, params.nonce, params.v, params.r, params.s);
         
         unlockAsset(
             assetType,
@@ -307,38 +311,38 @@ contract Bridge is
         emit Unlock(
             assetType,
             sender,
-            params.receiver,
+            sender,
             params.amount,
             params.token,
             params.tokenId,
-            params.targetChain
+            chain
         );
         return true;
     }
 
-    /// @dev Verifies that a signature is valid 
-    /// @param params BridgeParams structure (see definition in IBridge.sol)
-    /// @param verifyPrice true - if price verification is needed to calculate fee
-    /// @param _chain If not price verification, we check chain
+    /// @dev Verifies that chain signature is valid 
+    /// @param typeHash abi encoded type hash digest
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
     function signatureVerification(
-        BridgeParams calldata params,
-        bool verifyPrice,
-        string memory _chain
+        bytes32 typeHash,
+        uint256 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) internal {
-            require(!nonces[params.nonce], "Bridge: request already processed!");
+        require(!nonces[nonce], "Bridge: request already processed!");
 
-            bytes32 permitDigest = EIP712Utils.getPermitDigest(
-                params,
-                verifyPrice,
-                _chain
-            );
-            // Recover the signer of the PERMIT_DIGEST
-            address signer = ecrecover(permitDigest, params.v, params.r, params.s);
-            // Compare the recover and the required signer
-            require(signer == botMessenger, "Bridge: invalid signature!");
+        bytes32 permitDigest = EIP712Utils.getPermitDigest(typeHash);
+        // Recover the signer of the PERMIT_DIGEST
+        address signer = ecrecover(permitDigest, v, r, s);
+        // Compare the recover and the required signer
+        require(signer == botMessenger, "Bridge: invalid signature!");
 
-            nonces[params.nonce] = true;
-            lastNonce = params.nonce;
+        nonces[nonce] = true;
+        lastNonce = nonce;
     }
 
     //==========Helper Functions==========

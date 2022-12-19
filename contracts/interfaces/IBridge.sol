@@ -16,7 +16,7 @@ interface IBridge {
      * (in comments below)
      */
 
-    /// @notice Major structure that passed to the contract during it's operations with tokens
+    /// @notice structure that passed to the contract during it's operations with tokens on a source chain
     /// @param amount The amount of tokens to lock
     /// @param token Token address (address(0) if native)
     /// @param tokenId Token ID in case of operations with ERC721 or ERC1155, must be set to 0 otherwise
@@ -29,7 +29,7 @@ interface IBridge {
     /// @param v Last byte of the signed PERMIT_DIGEST
     /// @param r First 32 bytes of the signed PERMIT_DIGEST
     /// @param v 32-64 bytes of the signed PERMIT_DIGEST
-    struct BridgeParams {
+    struct sourceBridgeParams {
         uint256 amount;
         address token;
         uint256 tokenId;
@@ -38,6 +38,23 @@ interface IBridge {
         uint256 stargateAmountForOneUsd;
         uint256 transferedTokensAmountForOneUsd;
         bool payFeesWithST;
+        uint256 nonce;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
+    /// @notice structure that passed to the contract during it's operations with tokens on a target chain
+    /// @param amount The amount of tokens to lock
+    /// @param token Token address (address(0) if native)
+    /// @param tokenId Token ID in case of operations with ERC721 or ERC1155, must be set to 0 otherwise
+    /// @param nonce Prevent replay attacks
+    /// @param v Last byte of the signed PERMIT_DIGEST
+    /// @param r First 32 bytes of the signed PERMIT_DIGEST
+    /// @param v 32-64 bytes of the signed PERMIT_DIGEST
+    struct targetBridgeParams {
+        uint256 amount;
+        address token;
+        uint256 tokenId;
         uint256 nonce;
         uint8 v;
         bytes32 r;
@@ -56,28 +73,28 @@ interface IBridge {
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
     /// @param params BridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were locked successfully
-    function lockWithPermit(Assets assetType, BridgeParams calldata params)
+    function lockWithPermit(Assets assetType, sourceBridgeParams calldata params)
         external payable returns(bool);
 
     /// @notice Burn tokens if the user is permitted to burn
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
     /// @param params BridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were burned successfully
-    function burnWithPermit(Assets assetType, BridgeParams calldata params)
+    function burnWithPermit(Assets assetType, sourceBridgeParams calldata params)
         external returns(bool);
     
     /// @notice Mint tokens if the user is permitted to mint
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
     /// @param params BridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were minted successfully
-    function mintWithPermit(Assets assetType, BridgeParams calldata params)
+    function mintWithPermit(Assets assetType, targetBridgeParams calldata params)
         external returns(bool);
     
     /// @notice Unlocks tokens if the user is permitted to unlock
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
     /// @param params BridgeParams structure (see definition in IBridge.sol)
     /// @return True if tokens were unlocked successfully
-    function unlockWithPermit(Assets assetType, BridgeParams calldata params)
+    function unlockWithPermit(Assets assetType, targetBridgeParams calldata params)
         external returns(bool);
 
     /// @notice Indicates that tokens were locked in the source chain
@@ -125,7 +142,7 @@ interface IBridge {
     event Mint(
         Assets assetType,
         address indexed sender,
-        string receiver,
+        address receiver,
         uint256 amount,
         address indexed token,
         uint256 indexed tokenId,
@@ -142,7 +159,7 @@ interface IBridge {
     event Unlock(
         Assets assetType,
         address indexed sender,
-        string receiver,
+        address receiver,
         uint256 amount,
         address indexed token,
         uint256 indexed tokenId,

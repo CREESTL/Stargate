@@ -97,7 +97,7 @@ describe('Bridge', () => {
     stargateAmountForOneUsd = parseEther("15");
     transferedTokensAmountForOneUsd = parseEther("0.5");
 
-    getParams = ()=> {
+    getSourceParams = ()=> {
         return {
           amount: 0,
           token: addressZero,
@@ -107,6 +107,18 @@ describe('Bridge', () => {
           stargateAmountForOneUsd,
           transferedTokensAmountForOneUsd,
           payFeesWithST: true,
+          nonce: 0,
+          v: 0,
+          r: 0,
+          s: 0
+        }
+    }
+
+  getTargetParams = ()=> {
+        return {
+          amount: 0,
+          token: addressZero,
+          tokenId: 0,
           nonce: 0,
           v: 0,
           r: 0,
@@ -130,7 +142,7 @@ describe('Bridge', () => {
 
   	it('Should lock native tokens', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -196,7 +208,7 @@ describe('Bridge', () => {
 
     it("Should fail to lock native tokens if token was changed", async() => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -217,7 +229,7 @@ describe('Bridge', () => {
 
   	it('Should fail to lock native tokens if amount sent not equal amount in params', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -234,7 +246,7 @@ describe('Bridge', () => {
 
   	it('Should fail to lock native tokens if not enough tokens were sent to pay fees', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
 
@@ -259,7 +271,7 @@ describe('Bridge', () => {
 
     it('Should fail to lock same native tokens twice', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -278,7 +290,7 @@ describe('Bridge', () => {
          
     it('Should fail to lock native tokens with invalid signature', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -297,7 +309,7 @@ describe('Bridge', () => {
     it('Should unlock native tokens to the user', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -310,11 +322,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(0, params, {value: amount})
 
+      params = getTargetParams();
       params.nonce +=1;
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -328,7 +341,7 @@ describe('Bridge', () => {
 
     it("Should fail to unlock native tokent if token address changed", async() => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -341,11 +354,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(0, params, {value: amount})
 
+      params = getTargetParams();
       params.nonce +=1;
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -357,7 +371,7 @@ describe('Bridge', () => {
 
     it('Should fail to unlock native tokens if target chain differs', async () => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -370,12 +384,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(0, params, {value: amount})
 
+      params = getTargetParams();
       params.nonce +=1;
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      params.targetChain = "Goerli"
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Goerli", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -387,13 +401,12 @@ describe('Bridge', () => {
   	it('Should fail to unlock native tokens if not enough tokens on the bridge', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -405,7 +418,7 @@ describe('Bridge', () => {
     it('Should fail to unlock same native tokens twice', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -418,11 +431,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(0, params, {value: amount})
 
+      params = getTargetParams();
       params.nonce +=1;
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -435,7 +449,7 @@ describe('Bridge', () => {
     it('Should fail to unlock native tokens with invalid signature', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -448,11 +462,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(0, params, {value: amount})
 
+      params = getTargetParams();
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, "Ala", params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -466,7 +481,7 @@ describe('Bridge', () => {
 
   	it('Should lock ERC20 tokens', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -529,7 +544,7 @@ describe('Bridge', () => {
 
     it("Should fail to lock ERC20 tokens if token changed", async() => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -549,7 +564,7 @@ describe('Bridge', () => {
 
   	it('Should fail to lock ERC20 tokens if not enough tokens were sent to pay fees', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
       params.token = transferToken.address;
@@ -573,7 +588,7 @@ describe('Bridge', () => {
 
     it('Should fail to lock same ERC20 tokens twice', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -593,7 +608,7 @@ describe('Bridge', () => {
          
     it('Should fail to lock ERC20 tokens with invalid signature', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -613,7 +628,7 @@ describe('Bridge', () => {
     it('Should unlock ERC20 tokens to the user', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -627,11 +642,13 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(1, params)
 
+      params = getTargetParams();
+      params.token = transferToken.address;
       params.nonce +=1;
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -644,7 +661,7 @@ describe('Bridge', () => {
 
     it("Should fail to unlock ERC20 tokens if token address changed", async() => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -658,11 +675,13 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(1, params)
 
+      params = getTargetParams();
+      params.token = transferToken.address;
       params.nonce +=1;
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -674,7 +693,7 @@ describe('Bridge', () => {
 
     it('Should fail to unlock ERC20 tokens if target chain differs', async () => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -688,12 +707,13 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(1, params)
 
+      params = getTargetParams();
+      params.token = transferToken.address;
       params.nonce +=1;
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      params.targetChain = "Goerli"
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Goerli", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -705,14 +725,13 @@ describe('Bridge', () => {
   	it('Should fail to unlock ERC20 tokens if not enough tokens on the bridge', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = transferToken.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -724,7 +743,7 @@ describe('Bridge', () => {
     it('Should fail to unlock same ERC20 tokens twice', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -738,11 +757,13 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(1, params)
 
+      params = getTargetParams();
+      params.token = transferToken.address;
       params.nonce +=1;
       params.amount = amount.div("2");
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -755,7 +776,7 @@ describe('Bridge', () => {
     it('Should fail to unlock ERC20 tokens with invalid signature', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -769,11 +790,13 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(1, params)
 
+      params = getTargetParams();
+      params.token = transferToken.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, "Ala", params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -785,14 +808,13 @@ describe('Bridge', () => {
   	it('Should mint ERC20 tokens to users', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC20.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -807,14 +829,13 @@ describe('Bridge', () => {
 
     it("Should fail to mint ERC20 tokens if token address changed", async() => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC20.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -826,15 +847,13 @@ describe('Bridge', () => {
 
     it("Should fail to mint ERC20 tokens if target chain differs", async () => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC20.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      params.targetChain = "Goerli"
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Goerli", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -846,15 +865,14 @@ describe('Bridge', () => {
     it('Should fail to mint ERC20 tokens with invalid signature', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC20.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -866,14 +884,13 @@ describe('Bridge', () => {
   	it('Should fail to mint ERC20 tokens with the same nonce', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC20.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -885,7 +902,7 @@ describe('Bridge', () => {
 
   	it('Should burn ERC20 tokens', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -944,7 +961,7 @@ describe('Bridge', () => {
 
     it("Should fail to burn ERC20 tokens if token address changed", async() => {
       let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -964,7 +981,7 @@ describe('Bridge', () => {
   	it('Should fail to burn ERC20 tokens if user does not have enough tokens', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       await stargateToken.mint(client3.address, parseEther("0.5"));
       params.amount = amount;
       params.receiver = client3.address;
@@ -983,7 +1000,7 @@ describe('Bridge', () => {
 
     it('Should fail to burn ERC20 tokens if not enought tokens were sent to pay fees', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
       params.token = transferToken.address;
@@ -1008,7 +1025,7 @@ describe('Bridge', () => {
     it('Should fail to burn ERC20 tokens with invalid signature', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -1028,7 +1045,7 @@ describe('Bridge', () => {
   	it('Should fail to burn ERC20 tokens with the same nonce', async() => {
 
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = transferToken.address;
@@ -1050,7 +1067,7 @@ describe('Bridge', () => {
 
   	it('Should lock ERC721 tokens', async() => {
       let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1118,7 +1135,7 @@ describe('Bridge', () => {
 
     it("Should fail to lock ERC721 tokens if token address changed", async() => {
       let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1142,7 +1159,7 @@ describe('Bridge', () => {
 
   	it('Should fail to lock ERC721 tokens if not enough tokens were sent to pay fees', async() => {
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
       params.token = tokenERC721.address;
@@ -1166,7 +1183,7 @@ describe('Bridge', () => {
 
     it('Should fail to lock same ERC721 tokens twice', async() => {
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1190,7 +1207,7 @@ describe('Bridge', () => {
          
     it('Should fail to lock ERC721 tokens with invalid signature', async() => {
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1210,7 +1227,7 @@ describe('Bridge', () => {
     it('Should unlock ERC721 tokens to the user', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1228,10 +1245,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(2, params);
 
+      params = getTargetParams();
+      params.token = tokenERC721.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1245,7 +1264,7 @@ describe('Bridge', () => {
 
     it("Should fail to unlock ERC721 tokens if token address changed", async() => {
       let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1263,10 +1282,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(2, params);
 
+      params = getTargetParams();
+      params.token = tokenERC721.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1278,7 +1299,7 @@ describe('Bridge', () => {
 
     it('Should fail to unlock ERC721 tokens if targer chain differs', async () => {
       let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1296,11 +1317,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(2, params);
 
+      params = getTargetParams();
+      params.token = tokenERC721.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      params.targetChain = "Goerli"
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Goerli", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1312,9 +1334,8 @@ describe('Bridge', () => {
   	it('Should fail to unlock ERC721 tokens if not enough tokens on the bridge', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC721.address;
 
       await tokenERC721.mint(client1.address, 0);
@@ -1323,7 +1344,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain,params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala",params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1335,7 +1356,7 @@ describe('Bridge', () => {
     it('Should fail to unlock same ERC721 tokens twice', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1353,10 +1374,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(2, params)
 
+      params = getTargetParams();
+      params.token = tokenERC721.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1369,7 +1392,7 @@ describe('Bridge', () => {
     it('Should fail to unlock ERC721 tokens with invalid signature', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1387,11 +1410,13 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(2, params)
 
+      params = getTargetParams();
+      params.token = tokenERC721.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, "Ala", params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1403,14 +1428,13 @@ describe('Bridge', () => {
   	it('Should mint ERC721 tokens to users', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC721.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1425,14 +1449,13 @@ describe('Bridge', () => {
 
     it("Should fail to mint ERC721 tokens if token address changed", async() => {
       let amount = 1;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC721.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -1444,15 +1467,13 @@ describe('Bridge', () => {
 
     it("Should fail to mint ERC721 tokens if target chain differs", async () => {
       let amount = 1;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC721.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      params.targetChain = "Goerli"
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Goerli", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1464,15 +1485,14 @@ describe('Bridge', () => {
     it('Should fail to mint ERC721 tokens with invalid signature', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC721.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1484,14 +1504,13 @@ describe('Bridge', () => {
   	it('Should fail to mint ERC721 tokens with the same nonce', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC721.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1503,7 +1522,7 @@ describe('Bridge', () => {
 
   	it('Should burn ERC721 tokens', async() => {
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1564,7 +1583,7 @@ describe('Bridge', () => {
 
     it("Should fail to burn ERC721 tokens if token address changed", async() => {
       let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1588,7 +1607,7 @@ describe('Bridge', () => {
   	it('Should fail to burn ERC721 tokens if user does not have enough tokens', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1610,7 +1629,7 @@ describe('Bridge', () => {
     it('Should fail to burn ERC721 tokens if not enought tokens were sent to pay fees', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
       params.token = tokenERC721.address;
@@ -1638,7 +1657,7 @@ describe('Bridge', () => {
     it('Should fail to burn ERC721 tokens with invalid signature', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1658,7 +1677,7 @@ describe('Bridge', () => {
   	it('Should fail to burn ERC721 tokens with the same nonce', async() => {
 
   		let amount = 1;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC721.address;
@@ -1683,7 +1702,7 @@ describe('Bridge', () => {
 
   	it('Should lock ERC1155 tokens', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -1749,7 +1768,7 @@ describe('Bridge', () => {
 
     it("Should fail to lock ERC1155 tokens if token address changed", async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -1772,7 +1791,7 @@ describe('Bridge', () => {
 
   	it('Should fail to lock ERC1155 tokens if not enough tokens were sent to pay fees', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
       params.token = tokenERC1155.address;
@@ -1796,7 +1815,7 @@ describe('Bridge', () => {
 
     it('Should fail to lock same ERC1155 tokens twice', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
       params.token = tokenERC1155.address;
@@ -1819,7 +1838,7 @@ describe('Bridge', () => {
          
     it('Should fail to lock ERC1155 tokens with invalid signature', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
       params.token = tokenERC1155.address;
@@ -1839,7 +1858,7 @@ describe('Bridge', () => {
     it('Should unlock ERC1155 tokens to the user', async() => {
 
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -1856,10 +1875,13 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(3, params);
 
+      params = getTargetParams();
+      params.token = tokenERC1155.address;
+      params.amount = amount;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1873,7 +1895,7 @@ describe('Bridge', () => {
 
     it("Should fail to unlock ERC1155 tokens if token address changed", async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -1890,10 +1912,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(3, params);
 
+      params = getTargetParams();
+      params.token = tokenERC1155.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1905,7 +1929,7 @@ describe('Bridge', () => {
 
     it('Should fail to unlock ERC1155 tokens if target chain differs', async () => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -1922,11 +1946,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(3, params);
 
+      params = getTargetParams();
+      params.token = tokenERC1155.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      params.targetChain = "Goerli";
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce);
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Goerli", params.nonce);
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1938,9 +1963,8 @@ describe('Bridge', () => {
   	it('Should fail to unlock ERC1155 tokens if not enough tokens on the bridge', async() => {
 
       let amount = 5;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC1155.address;
 
       await tokenERC1155.mint(client1.address, 0, 10);
@@ -1948,7 +1972,7 @@ describe('Bridge', () => {
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1960,7 +1984,7 @@ describe('Bridge', () => {
     it('Should fail to unlock same ERC1155 tokens twice', async() => {
 
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -1977,10 +2001,12 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(3, params)
 
+      params = getTargetParams();
+      params.token = tokenERC1155.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -1993,7 +2019,7 @@ describe('Bridge', () => {
     it('Should fail to unlock ERC1155 tokens with invalid signature', async() => {
 
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -2010,11 +2036,13 @@ describe('Bridge', () => {
       //Lock some tokens
       await bridge.connect(client1).lockWithPermit(3, params)
 
+      params = getTargetParams();
+      params.token = tokenERC1155.address;
       params.nonce +=1;
 
       domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong receiver
-      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, "Ala", params.nonce)
       permitDigest = getPermitDigest(domainSeparator, typeHash);
       signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2026,14 +2054,13 @@ describe('Bridge', () => {
   	it('Should mint ERC1155 tokens to users', async() => {
 
       let amount = 5;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC1155.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2048,14 +2075,13 @@ describe('Bridge', () => {
 
     it("Should fail to mint ERC1155 tokens if token address changed", async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC1155.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);
@@ -2067,15 +2093,13 @@ describe('Bridge', () => {
 
     it('Should fail to mint ERC1155 tokens if target chain differs', async () => {
       let amount = 5;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC1155.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      params.targetChain = "Goerli"
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Goerli", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2087,15 +2111,14 @@ describe('Bridge', () => {
     it('Should fail to mint ERC1155 tokens with invalid signature', async() => {
 
       let amount = 5;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC1155.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
       //wrong address
-      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client2.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2107,14 +2130,13 @@ describe('Bridge', () => {
   	it('Should fail to mint ERC1155 tokens with the same nonce', async() => {
 
       let amount = 5;
-      let params = getParams();
+      let params = getTargetParams();
       params.amount = amount;
-      params.receiver = client1.address;
       params.token = tokenERC1155.address;
 
   		await bridge.setSupportedChain("Ala");
       let domainSeparator = getDomainSeparator('1', chainId, bridge.address);
-      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, params.targetChain, params.nonce)
+      let typeHash = getPermitTypeHash(client1.address, params.amount, params.token, 0, "Ala", params.nonce)
       let permitDigest = getPermitDigest(domainSeparator, typeHash);
       let signature = getSignatureFromDigest(permitDigest, botMessenger);
       params = Object.assign(params, signature);     
@@ -2126,7 +2148,7 @@ describe('Bridge', () => {
 
   	it('Should burn ERC1155 tokens', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -2187,7 +2209,7 @@ describe('Bridge', () => {
 
     it("Should fail to burn ERC1155 tokens if token address changed", async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -2210,7 +2232,7 @@ describe('Bridge', () => {
 
   	it('Should fail to burn ERC1155 tokens if user does not have enough tokens', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -2230,7 +2252,7 @@ describe('Bridge', () => {
 
     it('Should fail to burn ERC1155 tokens if not enought tokens were sent to pay fees', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client3.address;
       params.token = tokenERC1155.address;
@@ -2257,7 +2279,7 @@ describe('Bridge', () => {
 
     it('Should fail to burn ERC1155 tokens with invalid signature', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -2279,7 +2301,7 @@ describe('Bridge', () => {
 
   	it('Should fail to burn ERC1155 tokens with the same nonce', async() => {
       let amount = 5;
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
       params.token = tokenERC1155.address;
@@ -2417,7 +2439,7 @@ describe('Bridge', () => {
 
 		it('Should collect fees from tokens transactions', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
@@ -2481,7 +2503,7 @@ describe('Bridge', () => {
 
 		it('Should fail to collect too high fees ', async() => {
   		let amount = ethers.utils.parseEther('1');
-      let params = getParams();
+      let params = getSourceParams();
       params.amount = amount;
       params.receiver = client1.address;
 
