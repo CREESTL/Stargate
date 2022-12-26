@@ -12,17 +12,9 @@ abstract contract EIP712Utils is IBridge {
         "VerifyPrice(uint256 stargateAmountForOneUsd,uint256 transferedTokensAmountForOneUsd,address token,uint256 nonce)"
     );
     /// @dev Generates the digest that is used in signature verification
-    /// @param params BridgeParams structure (see definition in IBridge.sol)
-    /// @param verifyPrice used in lock/burn functions to verify token prices, otherwise "false"
-    /// @param chain If not price verification (unlock or mint) we check chain
-    function getPermitDigest(
-        BridgeParams calldata params,
-        bool verifyPrice,
-        string memory chain
-    ) public view returns (bytes32) {
+    /// @param typeHash abi encoded type hash digest
+    function getPermitDigest(bytes32 typeHash) internal view returns (bytes32) {
         bytes32 domainSeparator = getDomainSeparator("1", block.chainid, address(this));
-        bytes32 typeHash = getPermitTypeHash(params, verifyPrice, chain);
-
         bytes32 permitDigest = keccak256(
             abi.encodePacked(
                 uint16(0x1901),
@@ -60,39 +52,41 @@ abstract contract EIP712Utils is IBridge {
         );   
     }
 
+    /// @dev Generates the type hash for verify price digest
+    /// @param params sourceBridgeParams structure (see definition in IBridge.sol)
+    function getVerifyPriceTypeHash(sourceBridgeParams calldata params) internal pure returns (bytes32) {
+        bytes32 permitHash;
+        permitHash = keccak256(
+            abi.encode(
+                VERIFYPRICE_TYPEHASH,
+                params.stargateAmountForOneUsd,
+                params.transferedTokensAmountForOneUsd,
+                params.token,
+                params.nonce
+            )
+        );
+        return permitHash;
+    }
     /// @dev Generates the type hash for permit digest
-    /// @param params BridgeParams structure (see definition in IBridge.sol)
-    /// @param verifyPrice used in lock/burn functions to verify token prices, otherwise "false"
+    /// @param params targetBridgeParams structure (see definition in IBridge.sol)
     /// @param chain If not price verification (unlock or mint) we check chain
     function getPermitTypeHash(
-        BridgeParams calldata params,
-        bool verifyPrice,
+        address receiver,
+        targetBridgeParams calldata params,
         string memory chain
     ) internal pure returns (bytes32) {
         bytes32 permitHash;
-        if(verifyPrice) {
-            permitHash = keccak256(
-                abi.encode(
-                    VERIFYPRICE_TYPEHASH,
-                    params.stargateAmountForOneUsd,
-                    params.transferedTokensAmountForOneUsd,
-                    params.token,
-                    params.nonce
-                )
-            );
-        } else{
-            permitHash = keccak256(
-                abi.encode(
-                    PERMIT_TYPEHASH,
-                    params.receiver,
-                    params.amount,
-                    params.token,
-                    params.tokenId,
-                    chain,
-                    params.nonce
-                )
-            );
-        }
+        permitHash = keccak256(
+            abi.encode(
+                PERMIT_TYPEHASH,
+                receiver,
+                params.amount,
+                params.token,
+                params.tokenId,
+                chain,
+                params.nonce
+            )
+        );
         return permitHash;
     }
 }
