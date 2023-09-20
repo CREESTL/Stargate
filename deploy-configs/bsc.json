@@ -1,0 +1,17 @@
+{
+  "operator": "0x37F82e48e8Fa746835449578151E40Ff5200aAF5",
+  "stablecoin": "0x55d398326f99059fF775485246999027B3197955",
+  "stargate": "",
+  "chain": "BinanceSmartChain",
+  "admin": "",
+  "supportedChains": [
+      "Polygon",
+      "Ethereum",
+      "Tron",
+      "Bitcoin",
+      "Solana",
+      "Alacrity",
+      "Cardano"
+  ]
+}
+

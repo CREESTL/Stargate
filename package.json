@@ -6,6 +6,7 @@
     "@openzeppelin/hardhat-upgrades": "^1.21.0",
     "hardhat": "^2.10.1",
     "hardhat-contract-sizer": "^2.6.1",
+    "hardhat-deploy": "^0.11.18",
     "solidity-coverage": "^0.7.21"
   },
   "dependencies": {
