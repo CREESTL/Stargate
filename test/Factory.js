@@ -47,7 +47,6 @@ describe('Factory', () => {
       [
         owner.address,
         owner.address,
-        owner.address,
         "Ala"
       ],
       {initializer:'initialize'}

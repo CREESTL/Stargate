@@ -73,24 +73,20 @@ contract Bridge is
     /// @notice Initializes internal variables, sets roles
     /// @param _botMessenger The address of bot messenger
     /// @param _stablecoin The address of USD stablecoin
-    /// @param _stargateToken The address of stargate token 
     /// @param _chain The chain bridge was deployed to
     function initialize(
         address _botMessenger,
         address _stablecoin,
-        address _stargateToken,
         string memory _chain
     ) public initializer
     {
         require(_botMessenger != address(0), "Bridge: default bot messenger can not be zero address!");
         require(_stablecoin != address(0), "Bridge: stablecoin can not be zero address!");
-        require(_stargateToken != address(0), "Bridge: stargate token can not be zero address!");
         // The caller becomes an admin
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // The provided address gets a special role (used in signature verification)
         botMessenger = _botMessenger;
         stablecoin = _stablecoin;
-        stargateToken = _stargateToken;
         chain = _chain;
         _setupRole(BOT_MESSENGER_ROLE, botMessenger);
 
@@ -355,6 +351,25 @@ contract Bridge is
         emit SetAdmin(newAdmin);
     }
 
+    /// @notice Sets the stablecoin
+    /// @param newStablecoin Address of the stablecoin
+    function setStablecoin(address newStablecoin) external onlyAdmin {
+        stablecoin = newStablecoin;
+    }
+
+    /// @notice Sets the stargate token
+    /// @param newStargateToken Address of the stargate token   
+    function setStargateToken(address newStargateToken) external onlyAdmin {
+        stargateToken = newStargateToken;
+    }
+
+    /// @notice Sets the bot messenger
+    /// @param newBotMessenger Address of the bot messenger (backend server)   
+    function setBotMessenger(address newBotMessenger) external onlyAdmin {
+        require(newBotMessenger != address(0), "Bridge: new bot messenger can not have a zero address!");
+        botMessenger = newBotMessenger;
+    }
+
     /// @notice Lock tokens
     /// @param assetType 0-native, 1-ERC20, 2-ERC721, 3-ERC1155
     /// @param sender Owner of the locked tokens
@@ -561,6 +576,9 @@ contract Bridge is
     /// @param token address of token in which fees are paid
     /// @param feeAmount fee amount
     function payFees(address sender, address token, uint256 feeAmount) internal {
+        // lazy skip if fee tokens aren't set or amount is zero (useful in case of USDT)
+        if(token == address(0) || feeAmount == 0)
+            return;
         tokenFees[token] += feeAmount;
         IWrappedERC20(token).safeTransferFrom(sender, address(this), feeAmount);
     }

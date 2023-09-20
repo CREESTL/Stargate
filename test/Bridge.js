@@ -65,11 +65,11 @@ describe('Bridge', () => {
       [
         botMessenger.address,
         stablecoin.address,
-        stargateToken.address,
         "Ala"
       ],
       {initializer:'initialize'}
     );
+    await bridge.setStargateToken(stargateToken.address);
 
     await tokenERC20.deployed();
     await tokenERC20.initialize("Integral", "SFXDX", 18, bridge.address);
@@ -2544,7 +2544,6 @@ describe('Bridge', () => {
         [
           addressZero,
           stablecoin.address,
-          stargateToken.address,
           "Ala"
         ],
         {initializer:'initialize'}
@@ -2555,22 +2554,10 @@ describe('Bridge', () => {
         [
           botMessenger.address,
           addressZero,
-          stargateToken.address,
           "Ala"
         ],
         {initializer:'initialize'}
       )).to.be.revertedWith("Bridge: stablecoin can not be zero address!");
-
-      await expect(upgrades.deployProxy(
-        bridgeTx,
-        [
-          botMessenger.address,
-          stablecoin.address,
-          addressZero,
-          "Ala"
-        ],
-        {initializer:'initialize'}
-      )).to.be.revertedWith("Bridge: stargate token can not be zero address!");
     });
 	});
 });
