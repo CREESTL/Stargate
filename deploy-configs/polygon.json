@@ -1,7 +1,7 @@
 {
   "operator": "0x37F82e48e8Fa746835449578151E40Ff5200aAF5",
   "stablecoin": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
-  "stargate": "",
+  "stargate": "0xbC51Ae0c227E7d18Abc01d51Ed5516234E0a996C",
   "chain": "Polygon",
   "admin": "",
   "supportedChains": [
